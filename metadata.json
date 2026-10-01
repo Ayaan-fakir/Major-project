@@ -1,0 +1,6 @@
+{
+  "name": "Aegis — Zero-Trust Telemedicine Platform",
+  "description": "Zero-trust clinical telemedicine platform featuring continuous identity verification, AES-256 end-to-end encryption, least-privilege clinical routing, and in-RAM blackbox records.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
