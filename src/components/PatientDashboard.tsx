@@ -11,6 +11,9 @@ import {
   getRegisteredPatientById,
   saveAppointment,
   saveOrUpdateRegisteredPatient,
+  getLastDischargeNotice,
+  clearDischargeNotice,
+  DischargeNotice,
 } from '../services/telemedicineStorage';
 import {
   LayoutDashboard,
@@ -42,6 +45,7 @@ import {
   Plus,
   X,
   Stethoscope,
+  HeartHandshake,
 } from 'lucide-react';
 
 interface PatientDashboardProps {
@@ -102,6 +106,11 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   // Dispatched Email Preview Modal State
   const [showEmailModal, setShowEmailModal] = useState<boolean>(false);
 
+  // Mutual Discharge / Care Concluded Notice
+  const [dischargeNotice, setDischargeNotice] = useState<DischargeNotice | null>(() =>
+    getLastDischargeNotice(currentUser.id)
+  );
+
   const reloadPatientState = () => {
     const freshPatient = getRegisteredPatientById(currentUser.id);
     if (freshPatient) {
@@ -113,6 +122,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
     setChatMessages(msgs);
     const appts = getStoredAppointments(currentUser.id);
     setAppointments(appts);
+    setDischargeNotice(getLastDischargeNotice(currentUser.id));
   };
 
   // Load chat and documents on mount & when selected doctor changes
@@ -120,7 +130,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
     reloadPatientState();
   }, [currentUser.id, attendingDoctor.id]);
 
-  // Listen to cross-window / tab changes (e.g. when doctor accepts/rejects, replies or uploads a prescription)
+  // Listen to cross-window / tab changes (e.g. when doctor accepts/rejects, replies, uploads a prescription, or discharges care)
   useEffect(() => {
     const handleStorageChange = () => {
       reloadPatientState();
@@ -129,12 +139,14 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
     window.addEventListener('aegis_documents_change', handleStorageChange);
     window.addEventListener('aegis_appointments_change', handleStorageChange);
     window.addEventListener('aegis_patients_change', handleStorageChange);
+    window.addEventListener('aegis_consultation_discharged', handleStorageChange);
     window.addEventListener('storage', handleStorageChange);
     return () => {
       window.removeEventListener('aegis_chat_change', handleStorageChange);
       window.removeEventListener('aegis_documents_change', handleStorageChange);
       window.removeEventListener('aegis_appointments_change', handleStorageChange);
       window.removeEventListener('aegis_patients_change', handleStorageChange);
+      window.removeEventListener('aegis_consultation_discharged', handleStorageChange);
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [currentUser.id, attendingDoctor.id]);
@@ -242,6 +254,53 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
             </button>
           </div>
         </div>
+
+        {/* MUTUAL CARE CONCLUSION & RECOVERY DISCHARGE NOTIFICATION BANNER */}
+        {dischargeNotice && (
+          <div className="mb-6 p-5 rounded-2xl bg-emerald-950 text-white border border-emerald-500/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg animate-fade-in">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 flex items-center justify-center shrink-0">
+                <HeartHandshake className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <div className="font-bold text-white flex flex-wrap items-center gap-2 text-sm sm:text-base">
+                  <span>Clinical Care Concluded · Patient Fully Recovered</span>
+                  <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-900 text-emerald-300 border border-emerald-700">
+                    ✓ Discharge Summary Issued
+                  </span>
+                </div>
+                <div className="text-xs text-emerald-200/90 font-mono mt-1">
+                  Dr. <strong className="text-white">{dischargeNotice.doctorName}</strong> has concluded your active consultation on {dischargeNotice.date} — {dischargeNotice.reason}.
+                </div>
+                {dischargeNotice.clinicalNotes && (
+                  <div className="text-xs text-emerald-300/80 italic mt-0.5">
+                    "{dischargeNotice.clinicalNotes}"
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setActiveTab('records')}
+                className="px-4 py-2 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>View Discharge Certificate</span>
+              </button>
+              <button
+                onClick={() => {
+                  clearDischargeNotice();
+                  setDischargeNotice(null);
+                }}
+                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-emerald-300 text-xs font-bold transition-colors"
+                title="Dismiss Notice"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* SECURITY & MAILED PASSWORD NOTIFICATION BANNER */}
         <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-black text-white border border-[#D7FA3B]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
@@ -462,10 +521,10 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <h3 className="font-display text-xl sm:text-2xl font-bold text-[#0E0E10]">
-                      Your Scheduled Consultations ({appointments.length})
+                      Your Scheduled Consultations
                     </h3>
                     <p className="text-xs text-[#8C8C88] font-mono">
-                      Pay-per-consultation sessions · Zero subscriptions · End-to-end encrypted
+                      Continuous clinical enclave · Zero subscriptions · End-to-end encrypted
                     </p>
                   </div>
 
@@ -510,7 +569,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                                 {isRejected && (
                                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-800 border border-red-300 text-[11px] font-mono font-bold">
                                     <XCircle className="w-3 h-3 text-red-600" />
-                                    <span>Consultation Declined (Fee Refunded)</span>
+                                    <span>Consultation Declined by Specialist</span>
                                   </span>
                                 )}
                               </div>
@@ -519,7 +578,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                                 {appt.date} · {appt.time}
                               </h4>
                               <p className="text-xs text-[#8C8C88] font-mono mt-0.5">
-                                Specialist: <strong className="text-black">{appt.doctorName}</strong> ({appt.specialty})
+                                Specialist: <strong className="text-black">{appt.doctorName}</strong> · {appt.specialty}
                               </p>
                               {appt.notes && (
                                 <p className="text-xs text-black/80 font-sans mt-2 bg-[#F6F4EE] p-3 rounded-xl border border-black/5">
@@ -569,20 +628,16 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                               <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-900 flex items-center gap-2">
                                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
                                 <span>
-                                  Clinical Note from Doctor: "{appt.rejectionReason || 'Physician schedule at hospital overbooked'}". Your UPI transaction was reversed.
+                                  Clinical Note from Doctor: "{appt.rejectionReason || 'Physician schedule at hospital overbooked'}".
                                 </span>
                               </div>
                             )}
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-black/5 text-xs font-mono text-[#8C8C88]">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-black/5 text-xs font-mono text-[#8C8C88]">
                             <div>
-                              <span className="block uppercase text-[10px]">Consultation Fee</span>
-                              <strong className="text-black">₹{appt.fee} (Paid)</strong>
-                            </div>
-                            <div>
-                              <span className="block uppercase text-[10px]">Payment Reference</span>
-                              <strong className="text-black">{appt.paymentRef}</strong>
+                              <span className="block uppercase text-[10px]">Clinical Channel</span>
+                              <strong className="text-black">● Encrypted Video &amp; Messaging</strong>
                             </div>
                             <div>
                               <span className="block uppercase text-[10px]">Zero-Trust Enclave</span>
@@ -620,7 +675,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                 <div className="p-6 sm:p-8 rounded-3xl bg-white border border-black/10 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="font-display text-lg font-bold text-[#0E0E10]">
-                      Your Health Records ({patientDocuments.length})
+                      Your Health Records
                     </h4>
                     <button
                       onClick={() => setIsUploadModalOpen(true)}
@@ -650,7 +705,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                               {doc.title}
                             </div>
                             <div className="text-[11px] text-[#8C8C88] font-mono">
-                              {doc.category} · {doc.date} {doc.uploadedBy === 'patient' ? '(Uploaded by You)' : '(Issued by Doctor)'}
+                              {doc.category} · {doc.date} · {doc.uploadedBy === 'patient' ? 'Uploaded by You' : 'Issued by Doctor'}
                             </div>
                           </div>
                         </div>
@@ -697,7 +752,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                     >
                       {DOCTORS.map((d) => (
                         <option key={d.id} value={d.id}>
-                          {d.name} ({d.specialty})
+                          {d.name} · {d.specialty}
                         </option>
                       ))}
                     </select>
@@ -864,13 +919,14 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                         <button
                           key={doc.id}
                           onClick={() => setSelectedDocIndex(idx)}
-                          className={`px-3 py-1.5 rounded-xl font-mono text-xs transition-all ${
+                          className={`px-3.5 py-1.5 rounded-xl font-mono text-xs transition-all max-w-[200px] truncate ${
                             selectedDocIndex === idx
                               ? 'bg-black text-[#D7FA3B] font-bold shadow-xs'
                               : 'bg-black/5 hover:bg-black/10 text-black'
                           }`}
+                          title={doc.title}
                         >
-                          {doc.title.split('—')[0].slice(0, 24)}...
+                          {doc.title}
                         </button>
                       ))}
                     </div>
@@ -1023,7 +1079,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                           </div>
                           <div className="text-[10px] text-[#8C8C88] truncate">{doc.specialty}</div>
                           <div className="text-[10px] font-mono text-[#D7FA3B] font-bold">
-                            ₹{doc.consultationFee} fee
+                            Specialist Consultation
                           </div>
                         </div>
                       </div>
@@ -1062,7 +1118,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                   >
                     {['09:00 AM', '10:30 AM', '11:45 AM', '02:00 PM', '04:15 PM', '06:00 PM'].map((s) => (
                       <option key={s} value={s}>
-                        {s} (30 Min Consult)
+                        {s} · 30 Min Consult
                       </option>
                     ))}
                   </select>
@@ -1084,39 +1140,29 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                 />
               </div>
 
-              {/* Price & Submit */}
-              {(() => {
-                const chosenDoc = DOCTORS.find((d) => d.id === consultDoctorId) || DOCTORS[0];
-                return (
-                  <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <div className="text-[10px] uppercase font-mono text-[#8C8C88]">
-                        Per-Session Consultation Fee
-                      </div>
-                      <div className="font-display font-bold text-xl text-[#D7FA3B]">
-                        ₹{chosenDoc.consultationFee}.00
-                      </div>
-                    </div>
+              {/* Submit button */}
+              <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="text-xs font-mono text-[#8C8C88]">
+                  Zero-trust clinical request · No subscription fee
+                </div>
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsConsultModalOpen(false)}
-                        className="px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold transition-colors"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-6 py-2.5 rounded-full bg-[#D7FA3B] hover:bg-[#cbf128] text-black font-extrabold text-xs tracking-tight transition-all active:scale-95 shadow-md flex items-center gap-1.5"
-                      >
-                        <CheckCircle2 className="w-4 h-4 text-black" />
-                        <span>Confirm &amp; Request (₹{chosenDoc.consultationFee})</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })()}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsConsultModalOpen(false)}
+                    className="px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold transition-colors text-white"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 rounded-full bg-[#D7FA3B] hover:bg-[#cbf128] text-black font-extrabold text-xs tracking-tight transition-all active:scale-95 shadow-md flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-black" />
+                    <span>Confirm Specialist Consultation Request</span>
+                  </button>
+                </div>
+              </div>
             </form>
           </div>
         </div>

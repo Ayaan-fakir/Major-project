@@ -109,7 +109,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onSelectOption }
             <div>
               <div className="text-xs font-mono uppercase tracking-wider text-[#8C8C88] font-semibold flex items-center gap-2">
                 <Microscope className="w-4 h-4 text-black" />
-                <span>Diagnostic Tele-Microservices &amp; Remote Labs (12 Modules)</span>
+                <span>Diagnostic Tele-Microservices &amp; Remote Labs</span>
               </div>
               <p className="text-xs text-[#8C8C88] mt-1">
                 Digital lab integration and tele-pathology review across verified healthcare partner laboratories.

@@ -24,12 +24,17 @@ import { Footer } from './components/Footer';
 import { PatientDashboard } from './components/PatientDashboard';
 import { DoctorClinicalPortal } from './components/DoctorClinicalPortal';
 import { LoginModal } from './components/LoginModal';
+import { SecurityVerificationModal } from './components/SecurityVerificationModal';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<AppView>('landing');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(getStoredAuthUser());
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [loginModalRole, setLoginModalRole] = useState<'patient' | 'doctor'>('patient');
+
+  // Security Verification modal state for Patient Login
+  const [verifyingPatientUser, setVerifyingPatientUser] = useState<AuthUser | null>(null);
+  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
 
   // Modals state
   const [selectedDoctorForModal, setSelectedDoctorForModal] = useState<Doctor | null>(null);
@@ -58,13 +63,23 @@ export default function App() {
   };
 
   const handleLoginSuccess = (user: AuthUser) => {
+    if (user.role === 'patient') {
+      // Trigger temporary Zero-Trust Security Verification Modal before entering patient portal
+      setVerifyingPatientUser(user);
+      setIsVerificationModalOpen(true);
+    } else {
+      setStoredAuthUser(user);
+      setCurrentUser(user);
+      setCurrentView('doctor');
+    }
+  };
+
+  const handleVerificationComplete = (user: AuthUser) => {
+    setIsVerificationModalOpen(false);
+    setVerifyingPatientUser(null);
     setStoredAuthUser(user);
     setCurrentUser(user);
-    if (user.role === 'doctor') {
-      setCurrentView('doctor');
-    } else {
-      setCurrentView('patient');
-    }
+    setCurrentView('patient');
   };
 
   const handleLogout = () => {
@@ -101,10 +116,8 @@ export default function App() {
     patientEmail: string;
     patientPhone: string;
     password: string;
-    fee: number;
-    paymentRef: string;
   }) => {
-    // Log them in as THIS newly provisioned patient with their actual name & credentials!
+    // Save new patient user
     const newPatientUser: AuthUser = {
       id: details.patientId,
       name: details.patientName,
@@ -117,16 +130,11 @@ export default function App() {
       assignedDoctorIds: [details.doctor.id],
       hasPaidAppointment: true,
     };
-    setStoredAuthUser(newPatientUser);
-    setCurrentUser(newPatientUser);
 
     setBookingToast({
-      message: `Enclave created for ${details.patientName}. Request sent to ${details.doctor.name} for ${details.date} at ${details.time} (₹${details.fee} Paid)!`,
-      ref: details.paymentRef,
+      message: `Enclave created for ${details.patientName}. Request dispatched to Dr. ${details.doctor.name} for ${details.date} at ${details.time}!`,
+      ref: `REQ-${details.patientId.slice(-5)}`,
     });
-
-    // Automatically transition to the newly provisioned personal patient enclave!
-    setCurrentView('patient');
 
     setTimeout(() => {
       setBookingToast(null);
@@ -166,7 +174,7 @@ export default function App() {
 
       {/* VIEW 1: PUBLIC LANDING PAGE (Default for all public visitors) */}
       {currentView === 'landing' && (
-        <main>
+        <main className="animate-fade-in">
           {/* Hero Section */}
           <Hero
             onOpenBooking={() => scrollToBooking()}
@@ -195,12 +203,25 @@ export default function App() {
             onBookDirect={(doctor) => scrollToBooking(doctor)}
           />
 
-          {/* Centerpiece Appointment Booking Flow (Appointment-Wise, Rupee ₹) */}
+          {/* Centerpiece Appointment Booking Flow */}
           <AppointmentBooking
             initialDoctor={bookingDoctor}
             initialDepartment={bookingDepartment}
             onBookingConfirmed={handleBookingConfirmed}
-            onEnterPatientPortal={() => setCurrentView('patient')}
+            onEnterPatientPortal={() => {
+              if (currentUser?.role === 'patient') {
+                setCurrentView('patient');
+              } else {
+                openLogin('patient');
+              }
+            }}
+            onEnterDoctorPortal={() => {
+              if (currentUser?.role === 'doctor') {
+                setCurrentView('doctor');
+              } else {
+                openLogin('doctor');
+              }
+            }}
           />
 
           {/* Treatment & Diagnostic Pricing (Appointment-Wise Billing, NO Subscriptions!) */}
@@ -315,6 +336,17 @@ export default function App() {
         onLoginSuccess={handleLoginSuccess}
         onGoToBooking={() => scrollToBooking()}
         initialRole={loginModalRole}
+      />
+
+      {/* TEMPORARY ZERO-TRUST SECURITY VERIFICATION OVERLAY (Patient Login Inspection) */}
+      <SecurityVerificationModal
+        isOpen={isVerificationModalOpen}
+        user={verifyingPatientUser}
+        onVerificationComplete={handleVerificationComplete}
+        onCancel={() => {
+          setIsVerificationModalOpen(false);
+          setVerifyingPatientUser(null);
+        }}
       />
 
       {/* MODAL 1: Doctor Detail Modal */}

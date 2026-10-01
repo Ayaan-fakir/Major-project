@@ -57,10 +57,10 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <button
-                  onClick={() => scrollTo('pricing')}
+                  onClick={() => scrollTo('facilities')}
                   className="hover:text-[#D7FA3B] transition-colors"
                 >
-                  Appointment Pricing (₹)
+                  Consultation Facilities
                 </button>
               </li>
               <li>
@@ -193,7 +193,7 @@ export const Footer: React.FC<FooterProps> = ({
 
           <div className="max-w-xs text-xs text-[#8C8C88] leading-relaxed">
             <p className="mb-2">
-              Zero-Trust Clinical Telemedicine. Pay per consultation in Indian Rupees (₹499 onwards) with in-RAM memory-only records.
+              Zero-Trust Clinical Telemedicine platform with in-RAM cryptographic health record protection and continuous identity enclave.
             </p>
             <button
               onClick={onOpenBooking}

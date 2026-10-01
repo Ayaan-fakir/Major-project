@@ -19,6 +19,8 @@ import {
   Copy,
   Check,
   ExternalLink,
+  ShieldCheck,
+  Stethoscope,
 } from 'lucide-react';
 
 interface AppointmentBookingProps {
@@ -254,7 +256,7 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Column (8 cols): Steps 1 to 4 */}
           <div className="lg:col-span-8 space-y-8">
-            {/* Step 1: Select Department (12 Departments!) */}
+            {/* Step 1: Select Department */}
             <div className="p-6 sm:p-8 rounded-3xl bg-[#141416] border border-white/10">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display text-xl font-bold text-white flex items-center gap-2">
@@ -296,7 +298,7 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({
                   <span className="w-6 h-6 rounded-full bg-[#D7FA3B] text-black text-xs font-mono font-bold flex items-center justify-center">
                     2
                   </span>
-                  <span>Select Specialist (Verified Capacity)</span>
+                  <span>Select Specialist</span>
                 </h3>
                 <span className="text-xs font-mono text-[#8C8C88]">
                   {availableDoctors.length} available
@@ -344,7 +346,7 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({
                   <span className="w-6 h-6 rounded-full bg-[#D7FA3B] text-black text-xs font-mono font-bold flex items-center justify-center">
                     3
                   </span>
-                  <span>Select Date &amp; Time (IST)</span>
+                  <span>Select Date &amp; Time</span>
                 </h3>
                 <span className="text-xs font-mono text-[#D7FA3B]">
                   Slots for {selectedDoctor.name}
@@ -528,7 +530,7 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({
                 </div>
                 <div className="flex items-center gap-2.5 text-white/90">
                   <Clock className="w-4 h-4 text-[#D7FA3B]" />
-                  <span>{selectedTimeSlot} IST (30 Min Consult)</span>
+                  <span>{selectedTimeSlot} IST · 30 Min Consult</span>
                 </div>
               </div>
 
@@ -602,10 +604,10 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({
 
                 <div className="text-white/80 leading-relaxed text-xs space-y-1">
                   <div>
-                    Patient Profile: <strong className="text-white">{patientName}</strong> (ID: #{createdPatientId})
+                    Patient Profile: <strong className="text-white">{patientName}</strong> · ID #{createdPatientId}
                   </div>
                   <div>
-                    Specialist: <strong className="text-white">{selectedDoctor.name}</strong> ({selectedDoctor.specialty})
+                    Specialist: <strong className="text-white">{selectedDoctor.name}</strong> · {selectedDoctor.specialty}
                   </div>
                   <div>
                     Date &amp; Time: <strong className="text-white">Oct {selectedDay}, 2026 · {selectedTimeSlot} IST</strong>
@@ -627,7 +629,7 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({
                       className="w-full py-2.5 rounded-full bg-white/5 hover:bg-white/15 text-white/90 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-white/10"
                     >
                       <Stethoscope className="w-3.5 h-3.5 text-[#D7FA3B]" />
-                      <span>Review in Doctor Portal (Demo Triage) →</span>
+                      <span>Review in Doctor Portal →</span>
                     </button>
                   )}
 
@@ -673,12 +675,12 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({
               <div className="space-y-3 font-sans text-sm text-white/90">
                 <p>Namaste {patientName},</p>
                 <p className="text-xs text-[#8C8C88] leading-relaxed">
-                  Your appointment booking with <strong>{selectedDoctor.name}</strong> ({selectedDoctor.hospital.split(',')[0]}) has been initiated. Your private patient enclave has been provisioned.
+                  Your appointment booking with <strong>{selectedDoctor.name}</strong> · {selectedDoctor.hospital.split(',')[0]} has been initiated. Your private patient enclave has been provisioned.
                 </p>
 
                 <div className="p-4 rounded-xl bg-white/[0.04] border border-[#D7FA3B]/40 space-y-1.5 font-mono text-xs">
                   <div className="text-[10px] text-[#8C8C88] uppercase">Official Login Credentials:</div>
-                  <div><strong>Username / Identifier:</strong> {patientEmail} (or {patientPhone})</div>
+                  <div><strong>Username / Identifier:</strong> {patientEmail} or {patientPhone}</div>
                   <div><strong>Patient ID:</strong> #{createdPatientId}</div>
                   <div className="text-[#D7FA3B]"><strong>Temporary Security Password:</strong> {createdPassword}</div>
                 </div>

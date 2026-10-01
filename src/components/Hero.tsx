@@ -33,7 +33,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onExploreServices, on
             </h1>
 
             <p className="text-[#8C8C88] text-sm sm:text-base lg:text-lg max-w-[520px] leading-relaxed mb-8">
-              Continuous identity verification, in-RAM consultations, and least-privilege clinical assignment. Consult top specialists from AIIMS, CMC Vellore, and NIMHANS. Pay per appointment from ₹499 with zero subscriptions.
+              Continuous identity verification, in-RAM consultations, and least-privilege clinical assignment. Consult top specialists from AIIMS, CMC Vellore, and NIMHANS with zero subscription barriers.
             </p>
 
             {/* CTAs */}
@@ -42,7 +42,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onExploreServices, on
                 onClick={onOpenBooking}
                 className="px-6 sm:px-7 py-3.5 rounded-full bg-[#D7FA3B] hover:bg-[#cbf128] text-black font-extrabold text-xs sm:text-sm tracking-tight transition-all active:scale-95 shadow-md flex items-center gap-2 group"
               >
-                <span>Book appointment (from ₹499)</span>
+                <span>Book Clinical Consultation</span>
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </button>
 
@@ -230,7 +230,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onExploreServices, on
           <span className="text-[#D7FA3B]">✦</span>
           <span>Nephrology</span>
           <span className="text-[#D7FA3B]">✦</span>
-          <span>Pay per Consult (From ₹499)</span>
+          <span>Zero-Trust Architecture</span>
           <span className="text-[#D7FA3B]">✦</span>
           <span>Cardiology (AIIMS)</span>
           <span className="text-[#D7FA3B]">✦</span>

@@ -51,14 +51,8 @@ export const DoctorDetailModal: React.FC<DoctorDetailModalProps> = ({
               </div>
             </div>
 
-            {/* Quick Contact & Fee in INR ₹ */}
+            {/* Quick Contact & Credentials */}
             <div className="p-4 rounded-xl bg-[#F6F4EE] border border-black/5 space-y-2.5 text-xs">
-              <div className="flex items-center justify-between text-[#8C8C88]">
-                <span>Consultation Fee</span>
-                <span className="font-bold text-lg text-[#1A1A1A] font-display">
-                  ₹{doctor.consultationFee}.00
-                </span>
-              </div>
               <div className="flex items-center gap-2 text-[#1A1A1A]">
                 <Building2 className="w-3.5 h-3.5 text-[#8C8C88] shrink-0" />
                 <span className="truncate">{doctor.hospital}</span>

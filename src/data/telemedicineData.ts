@@ -408,7 +408,7 @@ export const DOCTORS: Doctor[] = [
     title: 'Chief Urologist & Andrology Specialist',
     specialty: 'Urology',
     rating: 4.9,
-    available: false, // At capacity to demonstrate least-privilege capacity rules
+    available: true,
     image: '/src/assets/images/doctor_portrait_miller_1790774131347.jpg',
     experienceYears: 22,
     happyPatients: 3800,

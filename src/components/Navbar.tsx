@@ -114,14 +114,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => scrollToSection('services')}
               className="relative py-1 group hover:text-white transition-colors"
             >
-              <span>Services (12)</span>
+              <span>Services</span>
               <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#D7FA3B] group-hover:w-full transition-all duration-200" />
             </button>
             <button
               onClick={() => scrollToSection('doctors')}
               className="relative py-1 group hover:text-white transition-colors"
             >
-              <span>Doctors (12)</span>
+              <span>Doctors</span>
               <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#D7FA3B] group-hover:w-full transition-all duration-200" />
             </button>
             <button
@@ -179,17 +179,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                         </li>
                         <li>
                           <button onClick={() => { scrollToSection('services'); setUtilityMenuOpen(false); }} className="hover:text-[#D7FA3B]">
-                            All 12 Services
+                            Services
                           </button>
                         </li>
                         <li>
                           <button onClick={() => { scrollToSection('doctors'); setUtilityMenuOpen(false); }} className="hover:text-[#D7FA3B]">
-                            All 12 Specialists
+                            Specialists
                           </button>
                         </li>
                         <li>
-                          <button onClick={() => { scrollToSection('pricing'); setUtilityMenuOpen(false); }} className="hover:text-[#D7FA3B]">
-                            Appointment Pricing
+                          <button onClick={() => { scrollToSection('facilities'); setUtilityMenuOpen(false); }} className="hover:text-[#D7FA3B]">
+                            Consultation Facilities
                           </button>
                         </li>
                         <li>
@@ -354,10 +354,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               About us
             </button>
             <button onClick={() => scrollToSection('services')} className="text-left py-2 hover:text-[#D7FA3B]">
-              Services (12 Departments)
+              Clinical Services
             </button>
             <button onClick={() => scrollToSection('doctors')} className="text-left py-2 hover:text-[#D7FA3B]">
-              Doctors (12 Specialists)
+              Specialist Doctors
             </button>
             <button onClick={() => scrollToSection('facilities')} className="text-left py-2 hover:text-[#D7FA3B]">
               Consultation Facilities
@@ -424,7 +424,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               className="w-full py-3.5 rounded-full bg-[#D7FA3B] text-black font-extrabold text-center shadow-lg"
             >
-              Book Consultation (₹499 onwards)
+              Book Consultation Appointment
             </button>
           </div>
         </div>

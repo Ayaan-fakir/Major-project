@@ -36,7 +36,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/5 border border-black/10 text-[11px] font-mono tracking-wider text-[#1A1A1A] uppercase mb-4">
               <span className="w-1.5 h-1.5 rounded-full bg-[#1A1A1A]"></span>
-              <span>Healthcare Services (12 Departments)</span>
+              <span>Healthcare Services &amp; Clinical Specialties</span>
             </div>
 
             <h2 className="font-display text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-[#0E0E10] max-w-2xl leading-[1.05]">
@@ -46,7 +46,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
           </div>
 
           <p className="text-[#8C8C88] text-sm sm:text-base max-w-md">
-            12 specialized clinical departments across India. Pay per consultation starting from ₹499 with in-RAM Blackbox document security.
+            12 specialized clinical departments across India with in-RAM Blackbox document security.
           </p>
         </div>
 

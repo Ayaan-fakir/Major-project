@@ -13,6 +13,7 @@ import {
   getStoredAppointments,
   updateAppointmentStatus,
   saveOrUpdateRegisteredPatient,
+  dischargePatientConsultation,
 } from '../services/telemedicineStorage';
 import {
   Stethoscope,
@@ -38,6 +39,8 @@ import {
   Droplet,
   Eye,
   FileCheck,
+  HeartHandshake,
+  CheckCheck,
   XCircle,
   Inbox,
   Filter,
@@ -74,6 +77,13 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
   const [rejectionModalAppt, setRejectionModalAppt] = useState<AppointmentRecord | null>(null);
   const [rejectionReasonText, setRejectionReasonText] = useState('Doctor clinical capacity reached for this time slot');
   const [actionFeedbackToast, setActionFeedbackToast] = useState<string | null>(null);
+
+  // Mutual Discharge & Case Closure Modal state
+  const [showDischargeModal, setShowDischargeModal] = useState<boolean>(false);
+  const [dischargeOutcome, setDischargeOutcome] = useState('Patient Fully Recovered & Symptoms Resolved');
+  const [dischargeNotes, setDischargeNotes] = useState(
+    'Comprehensive telemedicine care concluded. Vital signs stable, ECG telemetry optimal, and treatment plan successfully completed.'
+  );
 
   // Selected patient state (null = patient list view; patient = detail workspace view)
   const [selectedPatient, setSelectedPatient] = useState<RegisteredPatient | null>(null);
@@ -200,6 +210,29 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
     setTimeout(() => setActionFeedbackToast(null), 4000);
   };
 
+  // MUTUAL CONSULTATION DISCHARGE & CASE CLOSURE
+  const handleConfirmDischarge = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPatient) return;
+
+    dischargePatientConsultation({
+      patientId: selectedPatient.id,
+      patientName: selectedPatient.name,
+      doctorId: doctorObj.id,
+      doctorName: doctorObj.name,
+      reason: dischargeOutcome,
+      dischargeNotes: dischargeNotes,
+    });
+
+    setActionFeedbackToast(
+      `Care concluded and mutual discharge certificate issued for ${selectedPatient.name}. Communication channel dissolved.`
+    );
+    setShowDischargeModal(false);
+    setSelectedPatient(null);
+    refreshDoctorData();
+    setTimeout(() => setActionFeedbackToast(null), 5000);
+  };
+
   // Trigger trust score drop test
   const handleSimulateScoreDrop = () => {
     setTrustScore(52);
@@ -311,7 +344,7 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
               Decline Request for {rejectionModalAppt.patientName}?
             </h3>
             <p className="text-xs text-[#8C8C88] mb-5 leading-relaxed">
-              Select or enter the clinical justification. The patient will be notified in their portal enclave and their consultation fee will be refunded or rerouted.
+              Select or enter the clinical justification. The patient will be notified in their portal enclave with the clinical reason.
             </p>
 
             <form onSubmit={handleConfirmReject} className="space-y-4">
@@ -360,6 +393,95 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
                   className="px-5 py-2 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs"
                 >
                   Confirm Decline
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MUTUAL CARE CONCLUSION & DISCHARGE MODAL (Mutual Enclave Dissolution) */}
+      {showDischargeModal && selectedPatient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-lg bg-[#18181B] text-white rounded-3xl border border-emerald-500/40 p-6 sm:p-8 shadow-2xl">
+            <button
+              onClick={() => setShowDischargeModal(false)}
+              className="absolute top-5 right-5 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-2 text-emerald-400 font-mono text-xs uppercase mb-2">
+              <HeartHandshake className="w-4 h-4" />
+              <span>Conclude Telemedicine Care &amp; Discharge</span>
+            </div>
+
+            <h3 className="font-display text-2xl font-bold mb-2">
+              Conclude Care for {selectedPatient.name}
+            </h3>
+            <p className="text-xs text-[#8C8C88] mb-5 leading-relaxed">
+              When patient health is stabilized or recovered, concluding the consultation mutually seals the clinical file, issues a signed discharge summary, and notifies the patient in their health enclave.
+            </p>
+
+            <form onSubmit={handleConfirmDischarge} className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono uppercase text-[#8C8C88] mb-1.5">
+                  Clinical Outcome
+                </label>
+                <select
+                  value={dischargeOutcome}
+                  onChange={(e) => setDischargeOutcome(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-black border border-white/20 text-white text-xs focus:outline-none focus:border-emerald-400"
+                >
+                  <option value="Patient Fully Recovered & Symptoms Resolved">
+                    Patient Fully Recovered &amp; Symptoms Resolved
+                  </option>
+                  <option value="Clinical Treatment Course Successfully Completed">
+                    Clinical Treatment Course Successfully Completed
+                  </option>
+                  <option value="Stabilized & Transitioned to Local Primary Care">
+                    Stabilized &amp; Transitioned to Local Primary Care
+                  </option>
+                  <option value="Consultation Series Concluded (Satisfactory Progress)">
+                    Consultation Series Concluded (Satisfactory Progress)
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono uppercase text-[#8C8C88] mb-1.5">
+                  Discharge Clinical Notes &amp; Follow-up Advice
+                </label>
+                <textarea
+                  rows={3}
+                  value={dischargeNotes}
+                  onChange={(e) => setDischargeNotes(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-black border border-white/20 text-white text-xs focus:outline-none focus:border-emerald-400 resize-none"
+                  placeholder="Enter final clinical assessment..."
+                />
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/20 text-xs text-emerald-300 flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <span>
+                  A permanent <strong>Clinical Discharge Summary</strong> will be signed with your NMC credentials and placed in {selectedPatient.name}'s Blackbox. The active 1-to-1 tele-channel will be mutually concluded.
+                </span>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowDischargeModal(false)}
+                  className="px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-xs tracking-tight transition-all active:scale-95 shadow-md flex items-center gap-1.5"
+                >
+                  <CheckCheck className="w-4 h-4 text-black" />
+                  <span>Confirm Clinical Discharge &amp; Conclude</span>
                 </button>
               </div>
             </form>
@@ -420,7 +542,7 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
                   onClick={() => setOtpCode(['8', '8', '1', '9', '4', '0'])}
                   className="text-xs text-[#8C8C88] hover:text-[#D7FA3B] underline font-mono"
                 >
-                  Auto-fill demo hardware key (881940)
+                  Auto-fill demo hardware key: 881940
                 </button>
               </div>
             </form>
@@ -447,7 +569,7 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
                 </h1>
               </div>
               <div className="text-xs text-[#8C8C88] font-mono mt-0.5">
-                Logged in as <strong className="text-white">{doctorObj.name}</strong> · {doctorObj.title} ({doctorObj.regNumber})
+                Logged in as <strong className="text-white">{doctorObj.name}</strong> · {doctorObj.title} · {doctorObj.regNumber}
               </div>
             </div>
           </div>
@@ -518,7 +640,10 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
             }`}
           >
             <User className="w-3.5 h-3.5" />
-            <span>Assigned Patients Panel ({assignedPatients.length})</span>
+            <span>Assigned Patients Panel</span>
+            <span className="px-2 py-0.5 rounded-full bg-black/40 text-[10px] font-mono">
+              {assignedPatients.length}
+            </span>
           </button>
 
           <button
@@ -533,9 +658,11 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
-            <span>Appointment Requests ({appointmentRequests.length})</span>
+            <span>Appointment Requests</span>
             {pendingCount > 0 && (
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+              <span className="px-2 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-mono animate-pulse">
+                {pendingCount} new
+              </span>
             )}
           </button>
         </div>
@@ -566,7 +693,7 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
                       requestFilter === 'all' ? 'bg-[#D7FA3B] text-black font-bold' : 'text-white/70 hover:text-white'
                     }`}
                   >
-                    All ({appointmentRequests.length})
+                    All Requests
                   </button>
                   <button
                     onClick={() => setRequestFilter('pending')}
@@ -629,7 +756,7 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
                               #{req.patientId}
                             </span>
                             <span className="text-xs font-mono text-white/60">
-                              · Ref: {req.paymentRef}
+                              · Req ID: #{req.id.slice(-6)}
                             </span>
 
                             {/* Status Badges */}
@@ -663,8 +790,8 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
                               <Mail className="w-3.5 h-3.5" />
                               <span>{req.patientEmail}</span>
                             </span>
-                            <span className="font-bold text-[#D7FA3B]">
-                              ₹{req.fee} (Paid via UPI)
+                            <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-white/90 text-[10px] font-mono font-semibold border border-white/10">
+                              Zero-Trust Teleconsult
                             </span>
                           </div>
 
@@ -740,7 +867,7 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
                     <span>Least-Privilege Routing · Active Patient Panel</span>
                   </div>
                   <h2 className="font-display text-2xl sm:text-3xl font-bold text-white">
-                    Assigned Patients Panel ({assignedPatients.length})
+                    Assigned Patients Panel
                   </h2>
                   <p className="text-xs sm:text-sm text-[#8C8C88] mt-1">
                     Select a patient from your verified queue to review their clinical records, reply to their messages, and compose e-prescriptions.
@@ -851,54 +978,66 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
                 </div>
               </div>
 
-              {/* Workspace Navigation Pills */}
-              <div className="flex items-center gap-2 bg-black/60 p-1.5 rounded-2xl border border-white/10 overflow-x-auto">
-                <button
-                  onClick={() => setWorkspaceTab('records')}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                    workspaceTab === 'records'
-                      ? 'bg-[#D7FA3B] text-black shadow-md font-bold'
-                      : 'text-white/80 hover:text-white'
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>Records ({patientDocuments.length})</span>
-                </button>
+              {/* Workspace Navigation Pills & Conclude Care Action */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5 bg-black/60 p-1.5 rounded-2xl border border-white/10 overflow-x-auto">
+                  <button
+                    onClick={() => setWorkspaceTab('records')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                      workspaceTab === 'records'
+                        ? 'bg-[#D7FA3B] text-black shadow-md font-bold'
+                        : 'text-white/80 hover:text-white'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Records</span>
+                  </button>
 
-                <button
-                  onClick={() => setWorkspaceTab('chat')}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                    workspaceTab === 'chat'
-                      ? 'bg-[#D7FA3B] text-black shadow-md font-bold'
-                      : 'text-white/80 hover:text-white'
-                  }`}
-                >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  <span>E2E Chat ({chatMessages.length})</span>
-                </button>
+                  <button
+                    onClick={() => setWorkspaceTab('chat')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                      workspaceTab === 'chat'
+                        ? 'bg-[#D7FA3B] text-black shadow-md font-bold'
+                        : 'text-white/80 hover:text-white'
+                    }`}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>E2E Chat</span>
+                  </button>
 
-                <button
-                  onClick={() => setWorkspaceTab('prescribe')}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                    workspaceTab === 'prescribe'
-                      ? 'bg-[#D7FA3B] text-black shadow-md font-bold'
-                      : 'text-white/80 hover:text-white'
-                  }`}
-                >
-                  <PlusCircle className="w-3.5 h-3.5" />
-                  <span>+ Prescribe</span>
-                </button>
+                  <button
+                    onClick={() => setWorkspaceTab('prescribe')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                      workspaceTab === 'prescribe'
+                        ? 'bg-[#D7FA3B] text-black shadow-md font-bold'
+                        : 'text-white/80 hover:text-white'
+                    }`}
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    <span>+ Prescribe</span>
+                  </button>
 
+                  <button
+                    onClick={() => setWorkspaceTab('video')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                      workspaceTab === 'video'
+                        ? 'bg-[#D7FA3B] text-black shadow-md font-bold'
+                        : 'text-white/80 hover:text-white'
+                    }`}
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                    <span>Video Room</span>
+                  </button>
+                </div>
+
+                {/* MUTUAL CARE CONCLUSION / DISCHARGE BUTTON */}
                 <button
-                  onClick={() => setWorkspaceTab('video')}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                    workspaceTab === 'video'
-                      ? 'bg-[#D7FA3B] text-black shadow-md font-bold'
-                      : 'text-white/80 hover:text-white'
-                  }`}
+                  onClick={() => setShowDischargeModal(true)}
+                  className="px-4 py-2.5 rounded-2xl bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                  title="Conclude active telemedicine care and issue mutual discharge summary"
                 >
-                  <Video className="w-3.5 h-3.5" />
-                  <span>Video Room</span>
+                  <HeartHandshake className="w-4 h-4 text-emerald-400" />
+                  <span>Conclude Care (Discharge)</span>
                 </button>
               </div>
             </div>
@@ -916,13 +1055,14 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
                         <button
                           key={doc.id}
                           onClick={() => setSelectedDocIndex(idx)}
-                          className={`px-3 py-1.5 rounded-xl font-mono text-xs transition-all ${
+                          className={`px-3.5 py-1.5 rounded-xl font-mono text-xs transition-all max-w-[200px] truncate ${
                             selectedDocIndex === idx
                               ? 'bg-[#D7FA3B] text-black font-bold shadow-xs'
                               : 'bg-black/50 text-white/80 hover:bg-black'
                           }`}
+                          title={doc.title}
                         >
-                          {doc.title.split('—')[0].slice(0, 24)}...
+                          {doc.title}
                         </button>
                       ))}
                     </div>
@@ -1157,7 +1297,10 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
                   DTLS-SRTP 256-bit peer-to-peer encrypted channel. Direct video consultation with live biometrics.
                 </p>
                 <button
-                  onClick={() => alert(`Starting encrypted video consultation room for ${selectedPatient.name}...`)}
+                  onClick={() => {
+                    setActionFeedbackToast(`Starting encrypted video consultation room for ${selectedPatient.name}...`);
+                    setTimeout(() => setActionFeedbackToast(null), 4000);
+                  }}
                   className="px-8 py-3.5 rounded-full bg-[#D7FA3B] hover:bg-[#cbf128] text-black font-bold text-sm shadow-md"
                 >
                   Start Clinical Video Stream

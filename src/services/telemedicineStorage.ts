@@ -12,7 +12,7 @@ export const notifyStateChange = (eventName: string) => {
   window.dispatchEvent(new Event(eventName));
 };
 
-// Initial Seed Patients
+// Initial Seed Patients (Single clean demo patient and doctor)
 const INITIAL_REGISTERED_PATIENTS: RegisteredPatient[] = [
   {
     id: 'p-89104',
@@ -23,44 +23,12 @@ const INITIAL_REGISTERED_PATIENTS: RegisteredPatient[] = [
     email: 'aarav.sharma@example.in',
     city: 'Indiranagar, Bengaluru',
     password: 'AEGIS-490281',
-    assignedDoctorIds: ['dr-arjun-patel', 'dr-priya-sharma'],
+    assignedDoctorIds: ['dr-arjun-patel'],
     condition: 'Post-Exertion Palpitations & Vector Review',
     status: 'stable',
     lastActive: 'Active now',
     assignedDate: 'Sept 2026',
     vitals: { bp: '118/76 mmHg', hr: '72 BPM', spo2: '99%' },
-  },
-  {
-    id: 'p-77219',
-    name: 'Rajiv Sengupta',
-    age: 54,
-    gender: 'Male',
-    phone: '+91 98200 44112',
-    email: 'rajiv.sengupta@example.in',
-    city: 'Bandra West, Mumbai',
-    password: 'AEGIS-881920',
-    assignedDoctorIds: ['dr-arjun-patel'],
-    condition: 'Post-Angioplasty Stent Follow-Up',
-    status: 'monitoring',
-    lastActive: '45m ago',
-    assignedDate: 'Aug 2026',
-    vitals: { bp: '128/82 mmHg', hr: '78 BPM', spo2: '98%' },
-  },
-  {
-    id: 'p-64102',
-    name: 'Sneha Deshmukh',
-    age: 42,
-    gender: 'Female',
-    phone: '+91 99100 88231',
-    email: 'sneha.deshmukh@example.in',
-    city: 'Hauz Khas, New Delhi',
-    password: 'AEGIS-319024',
-    assignedDoctorIds: ['dr-arjun-patel'],
-    condition: 'Mild Labile Hypertension & Lifestyle Stabilization',
-    status: 'stable',
-    lastActive: '2h ago',
-    assignedDate: 'July 2026',
-    vitals: { bp: '122/78 mmHg', hr: '68 BPM', spo2: '99%' },
   },
 ];
 
@@ -450,4 +418,95 @@ export const updateAppointmentStatus = (
 
   notifyStateChange('aegis_appointments_change');
   return updatedAppt;
+};
+
+// 7. MUTUAL CONSULTATION DISCHARGE & ENCLAVE CONCLUSION
+const DISCHARGE_NOTICE_KEY = 'aegis_last_discharge_notice';
+
+export interface DischargeNotice {
+  id: string;
+  patientId: string;
+  patientName: string;
+  doctorId: string;
+  doctorName: string;
+  date: string;
+  reason: string;
+  clinicalNotes: string;
+}
+
+export const dischargePatientConsultation = (details: {
+  patientId: string;
+  patientName: string;
+  doctorId: string;
+  doctorName: string;
+  reason: string;
+  dischargeNotes: string;
+}): { patient: RegisteredPatient | undefined; document: ClinicalDocument } => {
+  const patient = getRegisteredPatientById(details.patientId);
+  if (patient) {
+    patient.assignedDoctorIds = patient.assignedDoctorIds.filter((id) => id !== details.doctorId);
+    patient.status = 'stable';
+    patient.condition = `Care Concluded — Recovered from ${patient.condition}`;
+    patient.lastActive = 'Discharged (Recovered)';
+    saveOrUpdateRegisteredPatient(patient);
+  }
+
+  // Generate official discharge summary document into the patient's Blackbox
+  const dischargeDoc = saveClinicalDocument({
+    patientId: details.patientId,
+    patientName: details.patientName,
+    doctorId: details.doctorId,
+    doctorName: details.doctorName,
+    title: `Clinical Discharge Summary — Care Concluded & Patient Recovered`,
+    category: 'Consultation Summary',
+    pages: 1,
+    uploadedBy: 'doctor',
+    contentLines: [
+      'AEGIS ZERO-TRUST CLINICAL DISCHARGE & CARE CONVOLUTION RECORD',
+      `ISSUING SPECIALIST: ${details.doctorName} | DATE: ${new Date().toLocaleDateString('en-IN')}`,
+      `PATIENT: ${details.patientName} (ID: #${details.patientId})`,
+      '--------------------------------------------------------------------------------',
+      `CLINICAL OUTCOME: ${details.reason}`,
+      `PHYSICIAN ASSESSMENT & SUMMARY: ${details.dischargeNotes}`,
+      'TELEMETRY STATUS: Vitals normalized, ECG rhythm stabilized, e-Rx course concluded.',
+      'MUTUAL ENCLAVE STATUS: Active real-time communication channel concluded by physician.',
+      'PATIENT ADVICE: Patient is fully recovered. Routine annual health maintenance advised.',
+      '--------------------------------------------------------------------------------',
+      `SEALED CRYPTOGRAPHICALLY UNDER NMC CLINICAL SUPERVISION`,
+    ],
+  });
+
+  // Save discharge notice for patient notification
+  const notice: DischargeNotice = {
+    id: 'dis-' + Date.now(),
+    patientId: details.patientId,
+    patientName: details.patientName,
+    doctorId: details.doctorId,
+    doctorName: details.doctorName,
+    date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+    reason: details.reason,
+    clinicalNotes: details.dischargeNotes,
+  };
+  localStorage.setItem(DISCHARGE_NOTICE_KEY, JSON.stringify(notice));
+  notifyStateChange('aegis_consultation_discharged');
+  notifyStateChange('aegis_patients_change');
+
+  return { patient, document: dischargeDoc };
+};
+
+export const getLastDischargeNotice = (patientId?: string): DischargeNotice | null => {
+  try {
+    const raw = localStorage.getItem(DISCHARGE_NOTICE_KEY);
+    if (!raw) return null;
+    const parsed: DischargeNotice = JSON.parse(raw);
+    if (patientId && parsed.patientId !== patientId) return null;
+    return parsed;
+  } catch (e) {
+    return null;
+  }
+};
+
+export const clearDischargeNotice = () => {
+  localStorage.removeItem(DISCHARGE_NOTICE_KEY);
+  notifyStateChange('aegis_consultation_discharged');
 };

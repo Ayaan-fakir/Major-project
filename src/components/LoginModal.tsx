@@ -275,7 +275,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             {/* Quick Select from Registered Patients */}
             <div className="mt-5 pt-4 border-t border-white/10 space-y-2">
               <div className="text-[11px] font-mono text-[#8C8C88] uppercase">
-                Registered Patients on This Device ({registeredPatients.length}):
+                Registered Patients on This Device:
               </div>
 
               <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
@@ -344,7 +344,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 >
                   {DOCTORS.map((doc) => (
                     <option key={doc.id} value={doc.id}>
-                      {doc.name} — {doc.specialty} ({doc.hospital.split(',')[0]})
+                      {doc.name} — {doc.specialty} · {doc.hospital.split(',')[0]}
                     </option>
                   ))}
                 </select>

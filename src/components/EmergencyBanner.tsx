@@ -60,7 +60,7 @@ export const EmergencyBanner: React.FC<EmergencyBannerProps> = ({ onTriggerEmerg
           onClick={onTriggerEmergency}
           className="px-8 py-4 rounded-full bg-[#D7FA3B] hover:bg-[#cbf128] text-black font-extrabold text-sm tracking-tight transition-all active:scale-95 shadow-xl flex items-center gap-2"
         >
-          <span>Initiate Rapid Tele-Triage (₹499)</span>
+          <span>Initiate Rapid Tele-Triage</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
