@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FAQS } from '../data/telemedicineData';
-import { ChevronDown, Phone, Mail, MapPin, Send, CheckCircle2 } from 'lucide-react';
+import { saveClinicalInquiry } from '../services/telemedicineStorage';
+import { ChevronDown, Phone, Mail, MapPin, Send, CheckCircle2, ShieldCheck } from 'lucide-react';
 
 export const ContactAndFAQ: React.FC = () => {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
@@ -8,13 +9,24 @@ export const ContactAndFAQ: React.FC = () => {
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formPhone, setFormPhone] = useState('');
-  const [formSubject, setFormSubject] = useState('Cardiology Consultation');
+  const [formCategory, setFormCategory] = useState<'General Clinical' | 'Specialist Routing' | 'Security & Enclave' | 'Diagnostic Inquiry'>('General Clinical');
+  const [formSubject, setFormSubject] = useState('Cardiology Tele-Consultation Inquiry');
   const [formMessage, setFormMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formName || !formEmail) return;
+    if (!formName || !formEmail || !formMessage) return;
+
+    saveClinicalInquiry({
+      name: formName.trim(),
+      email: formEmail.trim(),
+      phone: formPhone.trim(),
+      category: formCategory,
+      subject: formSubject.trim() || 'Pre-Booking Clinical Inquiry',
+      message: formMessage.trim(),
+    });
+
     setSubmitted(true);
     setTimeout(() => {
       setSubmitted(false);
@@ -22,7 +34,7 @@ export const ContactAndFAQ: React.FC = () => {
       setFormEmail('');
       setFormPhone('');
       setFormMessage('');
-    }, 4000);
+    }, 5000);
   };
 
   const toggleFaq = (index: number) => {

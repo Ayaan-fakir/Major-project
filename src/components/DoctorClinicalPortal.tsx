@@ -14,6 +14,9 @@ import {
   updateAppointmentStatus,
   saveOrUpdateRegisteredPatient,
   dischargePatientConsultation,
+  getTotalUnreadMessagesForDoctor,
+  getUnreadMessagesCountFromPatient,
+  markChatAsReadByDoctor,
 } from '../services/telemedicineStorage';
 import {
   Stethoscope,
@@ -99,6 +102,7 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
   // Real Chat State
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [replyText, setReplyText] = useState('');
+  const [totalUnreadMessages, setTotalUnreadMessages] = useState<number>(0);
 
   // Continuous Behavioral-Biometrics Session Trust Score
   const [trustScore, setTrustScore] = useState<number>(96);
@@ -119,6 +123,10 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
     // Filter patients assigned to this doctor
     const myPatients = allPatients.filter((p) => p.assignedDoctorIds.includes(doctorObj.id));
     setAssignedPatients(myPatients);
+
+    // Calculate unread messages
+    const unread = getTotalUnreadMessagesForDoctor(doctorObj.id);
+    setTotalUnreadMessages(unread);
 
     // Filter appointments for this doctor
     const myAppts = getStoredAppointments(undefined, doctorObj.id);
@@ -147,8 +155,14 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
       // Load chat messages
       const msgs = getStoredChatMessages(selectedPatient.id, doctorObj.id);
       setChatMessages(msgs);
+
+      // Auto-mark patient messages as read when opening their chat tab or workspace
+      if (workspaceTab === 'chat') {
+        markChatAsReadByDoctor(selectedPatient.id, doctorObj.id);
+        setTotalUnreadMessages(getTotalUnreadMessagesForDoctor(doctorObj.id));
+      }
     }
-  }, [selectedPatient, doctorObj.id]);
+  }, [selectedPatient, workspaceTab, doctorObj.id]);
 
   // Listen to external storage events (e.g. when a patient books, uploads a record, or sends a message)
   useEffect(() => {
@@ -576,6 +590,17 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
 
           {/* Session Trust Score & Logout */}
           <div className="flex flex-wrap items-center gap-3">
+            {/* Red Dot Unread Patient Messages Notification Pill */}
+            {totalUnreadMessages > 0 && (
+              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-600/20 border border-red-500/50 text-red-300 text-xs font-mono animate-fade-in shadow-lg">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                </span>
+                <span className="font-bold">{totalUnreadMessages} New E2E Message{totalUnreadMessages > 1 ? 's' : ''}</span>
+              </div>
+            )}
+
             <button
               onClick={handleSimulateScoreDrop}
               className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-red-950/40 text-xs font-mono text-[#8C8C88] hover:text-red-300 border border-white/10 hover:border-red-500/40 transition-colors"
@@ -644,6 +669,12 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
             <span className="px-2 py-0.5 rounded-full bg-black/40 text-[10px] font-mono">
               {assignedPatients.length}
             </span>
+            {totalUnreadMessages > 0 && (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-mono font-bold animate-pulse shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                <span>{totalUnreadMessages} new</span>
+              </span>
+            )}
           </button>
 
           <button
@@ -751,6 +782,9 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
                           <div className="flex flex-wrap items-center gap-2.5">
                             <span className="font-display text-lg font-bold text-white">
                               {req.patientName}
+                            </span>
+                            <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-[#D7FA3B] font-mono text-xs font-bold border border-white/10">
+                              {req.patientAge || (patientObj ? patientObj.age : 32)} yrs · {req.patientGender || (patientObj ? patientObj.gender : 'Patient')}
                             </span>
                             <span className="text-xs font-mono text-[#D7FA3B]">
                               #{req.patientId}
@@ -888,61 +922,88 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
               ) : (
                 /* Patient Cards Grid */
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {assignedPatients.map((patient) => (
-                    <div
-                      key={patient.id}
-                      className="p-6 rounded-2xl bg-black/60 border border-white/10 hover:border-[#D7FA3B] transition-all flex flex-col justify-between group shadow-lg"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-xs font-mono text-[#D7FA3B]">
-                            ID: #{patient.id}
-                          </span>
-                          <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-[10px] font-mono text-white/80">
-                            {patient.lastActive}
-                          </span>
-                        </div>
+                  {assignedPatients.map((patient) => {
+                    const unreadCount = getUnreadMessagesCountFromPatient(patient.id, doctorObj.id);
 
-                        <h3 className="font-display text-xl font-bold text-white group-hover:text-[#D7FA3B] transition-colors mb-1">
-                          {patient.name}
-                        </h3>
-                        <div className="text-xs text-[#8C8C88] mb-3">
-                          {patient.age} yrs · {patient.gender} · {patient.city}
-                        </div>
-
-                        <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 text-xs text-white/90 mb-4">
-                          <span className="text-[#8C8C88] block text-[10px] uppercase font-mono mb-0.5">
-                            Primary Clinical Indication:
-                          </span>
-                          {patient.condition}
-                        </div>
-
-                        {/* Vitals summary preview */}
-                        <div className="grid grid-cols-3 gap-2 py-3 border-t border-b border-white/5 text-center font-mono text-xs mb-5">
-                          <div>
-                            <div className="text-[10px] text-[#8C8C88]">HR</div>
-                            <div className="font-bold text-white">{patient.vitals.hr}</div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] text-[#8C8C88]">BP</div>
-                            <div className="font-bold text-white">{patient.vitals.bp}</div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] text-[#8C8C88]">SpO2</div>
-                            <div className="font-bold text-[#D7FA3B]">{patient.vitals.spo2}</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => setSelectedPatient(patient)}
-                        className="w-full py-3 rounded-xl bg-[#D7FA3B] hover:bg-[#cbf128] text-black font-extrabold text-xs tracking-tight transition-all active:scale-95 flex items-center justify-center gap-2 shadow-md"
+                    return (
+                      <div
+                        key={patient.id}
+                        className={`p-6 rounded-2xl bg-black/60 border transition-all flex flex-col justify-between group shadow-lg ${
+                          unreadCount > 0
+                            ? 'border-red-500/70 bg-red-950/20 ring-1 ring-red-500/40'
+                            : 'border-white/10 hover:border-[#D7FA3B]'
+                        }`}
                       >
-                        <span>Open Clinical Case</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-xs font-mono text-[#D7FA3B]">
+                              ID: #{patient.id}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {unreadCount > 0 && (
+                                <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-600 text-white font-mono text-[10px] font-bold animate-pulse shadow-sm">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                                  <span>{unreadCount} E2E Msg</span>
+                                </span>
+                              )}
+                              <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-[10px] font-mono text-white/80">
+                                {patient.lastActive}
+                              </span>
+                            </div>
+                          </div>
+
+                          <h3 className="font-display text-xl font-bold text-white group-hover:text-[#D7FA3B] transition-colors mb-1">
+                            {patient.name}
+                          </h3>
+                          <div className="text-xs text-[#8C8C88] mb-3">
+                            {patient.age} yrs · {patient.gender} · {patient.city}
+                          </div>
+
+                          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 text-xs text-white/90 mb-4">
+                            <span className="text-[#8C8C88] block text-[10px] uppercase font-mono mb-0.5">
+                              Primary Clinical Indication:
+                            </span>
+                            {patient.condition}
+                          </div>
+
+                          {/* Vitals summary preview */}
+                          <div className="grid grid-cols-3 gap-2 py-3 border-t border-b border-white/5 text-center font-mono text-xs mb-5">
+                            <div>
+                              <div className="text-[10px] text-[#8C8C88]">HR</div>
+                              <div className="font-bold text-white">{patient.vitals.hr}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] text-[#8C8C88]">BP</div>
+                              <div className="font-bold text-white">{patient.vitals.bp}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] text-[#8C8C88]">SpO2</div>
+                              <div className="font-bold text-[#D7FA3B]">{patient.vitals.spo2}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            setSelectedPatient(patient);
+                            if (unreadCount > 0) {
+                              setWorkspaceTab('chat');
+                              markChatAsReadByDoctor(patient.id, doctorObj.id);
+                              setTotalUnreadMessages(getTotalUnreadMessagesForDoctor(doctorObj.id));
+                            }
+                          }}
+                          className={`w-full py-3 rounded-xl font-extrabold text-xs tracking-tight transition-all active:scale-95 flex items-center justify-center gap-2 shadow-md ${
+                            unreadCount > 0
+                              ? 'bg-red-500 hover:bg-red-400 text-white'
+                              : 'bg-[#D7FA3B] hover:bg-[#cbf128] text-black'
+                          }`}
+                        >
+                          <span>{unreadCount > 0 ? 'Reply to E2E Message' : 'Open Clinical Case'}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -994,8 +1055,14 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
                   </button>
 
                   <button
-                    onClick={() => setWorkspaceTab('chat')}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                    onClick={() => {
+                      setWorkspaceTab('chat');
+                      if (selectedPatient) {
+                        markChatAsReadByDoctor(selectedPatient.id, doctorObj.id);
+                        setTotalUnreadMessages(getTotalUnreadMessagesForDoctor(doctorObj.id));
+                      }
+                    }}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all relative ${
                       workspaceTab === 'chat'
                         ? 'bg-[#D7FA3B] text-black shadow-md font-bold'
                         : 'text-white/80 hover:text-white'
@@ -1003,6 +1070,9 @@ export const DoctorClinicalPortal: React.FC<DoctorClinicalPortalProps> = ({
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
                     <span>E2E Chat</span>
+                    {selectedPatient && getUnreadMessagesCountFromPatient(selectedPatient.id, doctorObj.id) > 0 && (
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                    )}
                   </button>
 
                   <button

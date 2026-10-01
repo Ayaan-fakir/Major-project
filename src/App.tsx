@@ -23,6 +23,7 @@ import { ContactAndFAQ } from './components/ContactAndFAQ';
 import { Footer } from './components/Footer';
 import { PatientDashboard } from './components/PatientDashboard';
 import { DoctorClinicalPortal } from './components/DoctorClinicalPortal';
+import { AdminPortal } from './components/AdminPortal';
 import { LoginModal } from './components/LoginModal';
 import { SecurityVerificationModal } from './components/SecurityVerificationModal';
 
@@ -30,7 +31,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState<AppView>('landing');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(getStoredAuthUser());
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [loginModalRole, setLoginModalRole] = useState<'patient' | 'doctor'>('patient');
+  const [loginModalRole, setLoginModalRole] = useState<'patient' | 'doctor' | 'admin'>('patient');
 
   // Security Verification modal state for Patient Login
   const [verifyingPatientUser, setVerifyingPatientUser] = useState<AuthUser | null>(null);
@@ -57,7 +58,7 @@ export default function App() {
     return () => window.removeEventListener('aegis_auth_change', handleAuthChange);
   }, []);
 
-  const openLogin = (role: 'patient' | 'doctor' = 'patient') => {
+  const openLogin = (role: 'patient' | 'doctor' | 'admin' = 'patient') => {
     setLoginModalRole(role);
     setIsLoginModalOpen(true);
   };
@@ -67,10 +68,14 @@ export default function App() {
       // Trigger temporary Zero-Trust Security Verification Modal before entering patient portal
       setVerifyingPatientUser(user);
       setIsVerificationModalOpen(true);
-    } else {
+    } else if (user.role === 'doctor') {
       setStoredAuthUser(user);
       setCurrentUser(user);
       setCurrentView('doctor');
+    } else if (user.role === 'admin') {
+      setStoredAuthUser(user);
+      setCurrentUser(user);
+      setCurrentView('admin');
     }
   };
 
@@ -305,18 +310,53 @@ export default function App() {
 
       {/* Fallback if user clicked doctor view without being logged in */}
       {currentView === 'doctor' && currentUser?.role !== 'doctor' && (
-        <div className="min-h-screen bg-[#0E0E10] text-white flex items-center justify-center p-6">
-          <div className="max-w-md w-full p-8 rounded-3xl bg-[#141416] border border-white/10 text-center space-y-4">
+        <div className="min-h-screen bg-[#0E0E10] text-white flex items-center justify-center p-6 animate-fade-in">
+          <div className="max-w-md w-full p-8 rounded-3xl bg-[#141416] border border-white/10 text-center space-y-4 shadow-2xl">
             <h3 className="font-display text-2xl font-bold">Doctor Enclave Sign In</h3>
             <p className="text-xs text-[#8C8C88] leading-relaxed">
               Verified Medical Registration (NMC) credential required. Doctors access assigned patient panels with zero platform fee.
             </p>
             <div className="flex gap-3 justify-center pt-2">
               <button
-                onClick={() => setIsLoginModalOpen(true)}
-                className="px-6 py-3 rounded-full bg-[#D7FA3B] text-black font-bold text-xs"
+                onClick={() => openLogin('doctor')}
+                className="px-6 py-3 rounded-full bg-[#D7FA3B] text-black font-bold text-xs shadow-md"
               >
                 Doctor Sign In
+              </button>
+              <button
+                onClick={() => setCurrentView('landing')}
+                className="px-6 py-3 rounded-full bg-white/10 text-white font-semibold text-xs"
+              >
+                Back to Website
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 4: SYSTEM CREATOR & ADMIN PORTAL */}
+      {currentView === 'admin' && currentUser?.role === 'admin' && (
+        <AdminPortal
+          currentUser={currentUser}
+          onBackToLanding={() => setCurrentView('landing')}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {/* Fallback if user clicked admin view without being logged in as admin */}
+      {currentView === 'admin' && currentUser?.role !== 'admin' && (
+        <div className="min-h-screen bg-[#0E0E10] text-white flex items-center justify-center p-6 animate-fade-in">
+          <div className="max-w-md w-full p-8 rounded-3xl bg-[#141416] border border-[#D7FA3B]/30 text-center space-y-4 shadow-2xl">
+            <h3 className="font-display text-2xl font-bold text-white">Creator &amp; Admin Gate</h3>
+            <p className="text-xs text-[#8C8C88] leading-relaxed">
+              Restricted console for the system designer &amp; telemedicine platform creator. Master cryptographic key verification required.
+            </p>
+            <div className="flex gap-3 justify-center pt-2">
+              <button
+                onClick={() => openLogin('admin')}
+                className="px-6 py-3 rounded-full bg-[#D7FA3B] text-black font-bold text-xs shadow-md"
+              >
+                Creator Login
               </button>
               <button
                 onClick={() => setCurrentView('landing')}

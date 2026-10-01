@@ -9,7 +9,7 @@ interface LoginModalProps {
   onClose: () => void;
   onLoginSuccess: (user: AuthUser) => void;
   onGoToBooking: () => void;
-  initialRole?: 'patient' | 'doctor';
+  initialRole?: 'patient' | 'doctor' | 'admin';
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({
@@ -19,7 +19,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onGoToBooking,
   initialRole = 'patient',
 }) => {
-  const [selectedRole, setSelectedRole] = useState<'patient' | 'doctor'>(initialRole);
+  const [selectedRole, setSelectedRole] = useState<'patient' | 'doctor' | 'admin'>(initialRole);
   const [registeredPatients, setRegisteredPatients] = useState<RegisteredPatient[]>([]);
   const [lastMailedCreds, setLastMailedCreds] = useState<any>(null);
 
@@ -32,6 +32,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>(DOCTORS[0].id);
   const [doctorRegNumber, setDoctorRegNumber] = useState(DOCTORS[0].regNumber);
   const [doctorPin, setDoctorPin] = useState('8819');
+
+  // Admin Login Fields
+  const [adminKey, setAdminKey] = useState('AEGIS-ROOT-9901');
+  const [adminName, setAdminName] = useState('System Designer (Creator)');
 
   // Load patients and credentials when opened
   useEffect(() => {
@@ -143,6 +147,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     onClose();
   };
 
+  const handleAdminSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const user: AuthUser = {
+      id: 'admin-root-01',
+      name: adminName.trim() || 'System Designer (Creator)',
+      role: 'admin',
+      emailOrPhone: 'creator@aegis-health.in',
+      email: 'creator@aegis-health.in',
+    };
+    onLoginSuccess(user);
+    onClose();
+  };
+
   const handleQuickDoctorDemo = (docId: string = DOCTORS[0].id) => {
     const doc = DOCTORS.find((d) => d.id === docId) || DOCTORS[0];
     const user: AuthUser = {
@@ -182,32 +199,45 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </div>
         </div>
 
-        {/* Role Toggle Selector */}
-        <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-white/5 border border-white/10 my-6">
+        {/* Role Toggle Selector (3 Portals: Patient, Doctor, Creator/Admin) */}
+        <div className="grid grid-cols-3 gap-1.5 p-1.5 rounded-2xl bg-white/5 border border-white/10 my-6">
           <button
             type="button"
             onClick={() => setSelectedRole('patient')}
-            className={`py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+            className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
               selectedRole === 'patient'
                 ? 'bg-[#D7FA3B] text-black shadow-md font-bold'
                 : 'text-white/80 hover:text-white'
             }`}
           >
             <User className="w-3.5 h-3.5" />
-            <span>Patient Portal</span>
+            <span>Patient</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSelectedRole('doctor')}
-            className={`py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+            className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
               selectedRole === 'doctor'
                 ? 'bg-[#D7FA3B] text-black shadow-md font-bold'
                 : 'text-white/80 hover:text-white'
             }`}
           >
             <Stethoscope className="w-3.5 h-3.5" />
-            <span>Doctor Portal</span>
+            <span>Doctor</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedRole('admin')}
+            className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+              selectedRole === 'admin'
+                ? 'bg-[#D7FA3B] text-black shadow-md font-bold'
+                : 'text-white/80 hover:text-white'
+            }`}
+          >
+            <Shield className="w-3.5 h-3.5" />
+            <span>Creator / Admin</span>
           </button>
         </div>
 
@@ -403,6 +433,65 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <span>⚡ 1-Click Login as Dr. Priya Sharma (CMC Physician)</span>
               </button>
             </div>
+          </div>
+        )}
+
+        {/* CREATOR / ADMIN CONSOLE LOGIN FORM */}
+        {selectedRole === 'admin' && (
+          <div>
+            <div className="p-3.5 rounded-2xl bg-[#D7FA3B]/10 border border-[#D7FA3B]/30 text-xs text-white/90 mb-5 leading-relaxed">
+              <span className="text-[#D7FA3B] font-semibold block mb-0.5">
+                ● Creator &amp; System Designer Access Enclave
+              </span>
+              Restricted root portal. Grants full access to real-time telemetry, zero-trust security checks, public clinical inquiries desk, and master clinician audit trails.
+            </div>
+
+            <form onSubmit={handleAdminSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono uppercase text-[#8C8C88] mb-1.5">
+                  Creator / Designer Identity
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={adminName}
+                  onChange={(e) => setAdminName(e.target.value)}
+                  placeholder="e.g. Ayaan Khan (Creator)"
+                  className="w-full px-4 py-3 rounded-xl bg-black border border-white/15 text-white text-sm focus:outline-none focus:border-[#D7FA3B]"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-mono uppercase text-[#8C8C88]">
+                    Master Cryptographic Admin Key
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setAdminKey('AEGIS-ROOT-9901')}
+                    className="text-[10px] text-[#D7FA3B] font-mono hover:underline"
+                  >
+                    ⚡ Auto-fill key
+                  </button>
+                </div>
+                <input
+                  type="password"
+                  required
+                  value={adminKey}
+                  onChange={(e) => setAdminKey(e.target.value)}
+                  placeholder="AEGIS-ROOT-XXXX"
+                  className="w-full px-4 py-3 rounded-xl bg-black border border-white/15 text-white text-sm focus:outline-none focus:border-[#D7FA3B] font-mono tracking-wider"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 rounded-full bg-[#D7FA3B] hover:bg-[#cbf128] text-black font-extrabold text-sm tracking-tight transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2 mt-2"
+              >
+                <span>Enter Admin &amp; Creator Console</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
           </div>
         )}
       </div>

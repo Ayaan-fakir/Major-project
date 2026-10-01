@@ -1,4 +1,4 @@
-import { AuthUser, ChatMessage, ClinicalDocument, AppointmentRecord, RegisteredPatient } from '../types';
+import { AuthUser, ChatMessage, ClinicalDocument, AppointmentRecord, RegisteredPatient, ClinicalInquiry } from '../types';
 import { INITIAL_CLINICAL_DOCUMENTS } from '../data/telemedicineData';
 
 const AUTH_USER_KEY = 'aegis_auth_user';
@@ -6,13 +6,93 @@ const DOCUMENTS_KEY = 'aegis_clinical_documents';
 const APPOINTMENTS_KEY = 'aegis_appointments';
 const PATIENTS_KEY = 'aegis_registered_patients';
 const LAST_MAILED_CREDENTIALS_KEY = 'aegis_last_mailed_credentials';
+const CLINICAL_INQUIRIES_KEY = 'aegis_clinical_inquiries';
+const AUDIT_LOGS_KEY = 'aegis_audit_logs';
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  action: string;
+  actor: string;
+  role: string;
+  details: string;
+  ipAddress: string;
+  trustScore: number;
+  status: 'SUCCESS' | 'FLAGGED' | 'RESOLVED';
+}
+
+// Initial Seed Audit Logs
+const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
+  {
+    id: 'log-001',
+    timestamp: 'Just now',
+    action: 'RAM Enclave Initialized',
+    actor: 'System Kernel',
+    role: 'system',
+    details: 'Zero-Trust memory space allocated with AES-256 in-RAM encryption.',
+    ipAddress: '103.21.144.92 (Bengaluru, IN)',
+    trustScore: 99,
+    status: 'SUCCESS',
+  },
+  {
+    id: 'log-002',
+    timestamp: '2 mins ago',
+    action: 'Physician Posture Verified',
+    actor: 'Dr. Arjun Patel',
+    role: 'doctor',
+    details: 'NMC registration credentials NMC/MCI/64291/2006 validated cryptographically.',
+    ipAddress: '103.21.144.92 (Bengaluru, IN)',
+    trustScore: 98,
+    status: 'SUCCESS',
+  },
+  {
+    id: 'log-003',
+    timestamp: '5 mins ago',
+    action: 'Patient Vault Sealed',
+    actor: 'Aarav Sharma',
+    role: 'patient',
+    details: '12-lead Holter diagnostic scan sealed in memory-only Blackbox.',
+    ipAddress: '122.161.48.11 (Bengaluru, IN)',
+    trustScore: 96,
+    status: 'SUCCESS',
+  },
+];
+
+// Initial Seed Inquiries
+const INITIAL_CLINICAL_INQUIRIES: ClinicalInquiry[] = [
+  {
+    id: 'inq-101',
+    name: 'Vikram Malhotra',
+    email: 'vikram.m@example.in',
+    phone: '+91 98201 44552',
+    subject: 'ECG Telemetry Compatibility for Cardiac Consultation',
+    message: 'I have a 12-lead digital ECG report from Apollo Delhi taken yesterday. Can I upload this PDF directly for Dr. Arjun Patel to review during the tele-consultation before booking?',
+    category: 'Diagnostic Inquiry',
+    status: 'replied',
+    createdAt: 'Today, 10:15 AM',
+    replyMessage: 'Yes Vikram, our Blackbox enclave accepts digital ECG PDFs, DICOM imaging, and Holter logs with in-RAM AES-256 encryption. Dr. Arjun Patel will review it as soon as your appointment request is confirmed.',
+    repliedAt: 'Today, 10:45 AM',
+    repliedBy: 'Creator / Telemedicine Administrator',
+  },
+  {
+    id: 'inq-102',
+    name: 'Sunita Mehra',
+    email: 'sunita.mehra@example.in',
+    phone: '+91 99104 33211',
+    subject: 'Pediatric Neurology Second Opinion Inquiry',
+    message: 'My 8-year-old child experiences focal motor twitches. Which specialist on the panel should I book an appointment with, and how do we receive the prescription?',
+    category: 'Specialist Routing',
+    status: 'pending',
+    createdAt: 'Today, 11:30 AM',
+  },
+];
 
 // Helper to broadcast local changes across tabs and components
 export const notifyStateChange = (eventName: string) => {
   window.dispatchEvent(new Event(eventName));
 };
 
-// Initial Seed Patients (Single clean demo patient and doctor)
+// Initial Seed Patients (Single clean demo patient Aarav Sharma assigned to Dr. Arjun Patel)
 const INITIAL_REGISTERED_PATIENTS: RegisteredPatient[] = [
   {
     id: 'p-89104',
@@ -38,6 +118,8 @@ const INITIAL_APPOINTMENTS: AppointmentRecord[] = [
     id: 'apt-seed-1',
     patientId: 'p-89104',
     patientName: 'Aarav Sharma',
+    patientAge: 38,
+    patientGender: 'Male',
     patientPhone: '+91 98765 43210',
     patientEmail: 'aarav.sharma@example.in',
     doctorId: 'dr-arjun-patel',
@@ -85,6 +167,7 @@ export const saveOrUpdateRegisteredPatient = (patient: RegisteredPatient) => {
 };
 
 // Creates a NEW patient from booking flow with generated password and specified doctor!
+// IMPORTANT: assignedDoctorIds is initially EMPTY until the doctor accepts the request!
 export const createPatientFromBooking = (details: {
   name: string;
   email: string;
@@ -104,26 +187,23 @@ export const createPatientFromBooking = (details: {
   if (details.existingPatientId) {
     const existing = current.find((p) => p.id === details.existingPatientId);
     if (existing) {
-      const assigned = existing.assignedDoctorIds.includes(details.doctorId)
-        ? existing.assignedDoctorIds
-        : [...existing.assignedDoctorIds, details.doctorId];
-
       const updatedPatient: RegisteredPatient = {
         ...existing,
-        assignedDoctorIds: assigned,
         condition: details.condition || existing.condition,
+        age: details.age || existing.age,
+        gender: details.gender || existing.gender,
         lastActive: 'Active now',
       };
       saveOrUpdateRegisteredPatient(updatedPatient);
 
-      saveLastMailedCredentials({
-        patientId: updatedPatient.id,
-        patientName: updatedPatient.name,
-        email: updatedPatient.email,
-        phone: updatedPatient.phone,
-        password: updatedPatient.password || generatedPassword,
-        doctorName: details.doctorName,
-        date: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+      saveAuditLog({
+        action: 'New Appointment Request Submitted',
+        actor: updatedPatient.name,
+        role: 'patient',
+        details: `Appointment requested with ${details.doctorName}. Awaiting doctor triage & acceptance.`,
+        ipAddress: '122.161.48.11 (India)',
+        trustScore: 96,
+        status: 'SUCCESS',
       });
 
       return { patient: updatedPatient, password: updatedPatient.password || generatedPassword };
@@ -142,61 +222,57 @@ export const createPatientFromBooking = (details: {
   );
 
   if (existingSamePerson) {
-    const assigned = existingSamePerson.assignedDoctorIds.includes(details.doctorId)
-      ? existingSamePerson.assignedDoctorIds
-      : [...existingSamePerson.assignedDoctorIds, details.doctorId];
-
     const updatedPatient: RegisteredPatient = {
       ...existingSamePerson,
-      assignedDoctorIds: assigned,
       condition: details.condition || existingSamePerson.condition,
+      age: details.age || existingSamePerson.age,
+      gender: details.gender || existingSamePerson.gender,
       lastActive: 'Active now',
     };
     saveOrUpdateRegisteredPatient(updatedPatient);
 
-    saveLastMailedCredentials({
-      patientId: updatedPatient.id,
-      patientName: updatedPatient.name,
-      email: updatedPatient.email,
-      phone: updatedPatient.phone,
-      password: updatedPatient.password || generatedPassword,
-      doctorName: details.doctorName,
-      date: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+    saveAuditLog({
+      action: 'Appointment Request Logged',
+      actor: updatedPatient.name,
+      role: 'patient',
+      details: `Inbound request filed for ${details.doctorName}. Awaiting doctor review.`,
+      ipAddress: '122.161.48.11 (India)',
+      trustScore: 95,
+      status: 'SUCCESS',
     });
 
     return { patient: updatedPatient, password: updatedPatient.password || generatedPassword };
   }
 
-  // Create BRAND NEW unique patient enclave
+  // Create BRAND NEW unique patient enclave with NO active doctor assignment yet!
   const newPatientId = 'p-' + Math.floor(10000 + Math.random() * 90000);
   const newPatient: RegisteredPatient = {
     id: newPatientId,
     name: cleanName || 'New Patient',
-    age: details.age || 34,
-    gender: details.gender || 'Prefer not to say',
+    age: details.age || 32,
+    gender: details.gender || 'Male',
     phone: details.phone.trim() || '+91 98765 ' + Math.floor(10000 + Math.random() * 90000),
     email: cleanEmail || `patient-${newPatientId}@aegis-health.in`,
     city: details.city || 'Bengaluru, India',
     password: generatedPassword,
-    assignedDoctorIds: [details.doctorId],
-    condition: details.condition || `Consultation regarding specialist review with ${details.doctorName}`,
+    assignedDoctorIds: [], // EMPTY! Only assigned upon doctor acceptance!
+    condition: details.condition || `Consultation request with ${details.doctorName}`,
     status: 'stable',
-    lastActive: 'Active now',
+    lastActive: 'Pending Acceptance',
     assignedDate: new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }),
     vitals: { bp: '120/80 mmHg', hr: '72 BPM', spo2: '99%' },
   };
 
   saveOrUpdateRegisteredPatient(newPatient);
 
-  // Save mailed credentials record
-  saveLastMailedCredentials({
-    patientId: newPatient.id,
-    patientName: newPatient.name,
-    email: newPatient.email,
-    phone: newPatient.phone,
-    password: generatedPassword,
-    doctorName: details.doctorName,
-    date: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+  saveAuditLog({
+    action: 'Patient Profile Provisioned (Pending)',
+    actor: newPatient.name,
+    role: 'guest/patient',
+    details: `Patient #${newPatient.id} provisioned with encrypted credentials. Sent to ${details.doctorName}'s inbound triage desk.`,
+    ipAddress: '122.161.48.11 (India)',
+    trustScore: 94,
+    status: 'SUCCESS',
   });
 
   return { patient: newPatient, password: generatedPassword };
@@ -271,6 +347,8 @@ export const getStoredChatMessages = (patientId: string, doctorId: string): Chat
         text: 'Namaste Aarav. I reviewed your 12-lead digital Holter report. Your resting heart rate stabilized at 72 BPM nicely.',
         timestamp: '09:15 AM',
         encrypted: true,
+        readByDoctor: true,
+        readByPatient: true,
       },
       {
         id: 'msg-seed-2',
@@ -280,6 +358,8 @@ export const getStoredChatMessages = (patientId: string, doctorId: string): Chat
         text: 'Thank you doctor! The palpitations are much less frequent now. Should I continue Metoprolol 25mg after breakfast?',
         timestamp: '09:18 AM',
         encrypted: true,
+        readByDoctor: true,
+        readByPatient: true,
       },
     ];
     localStorage.setItem(key, JSON.stringify(initialSeed));
@@ -303,12 +383,86 @@ export const saveChatMessage = (
     chatKey: key,
     timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
     encrypted: true,
+    readByDoctor: message.sender === 'doctor' ? true : false,
+    readByPatient: message.sender === 'patient' ? true : false,
   };
 
   const updated = [...current, newMsg];
   localStorage.setItem(key, JSON.stringify(updated));
   notifyStateChange('aegis_chat_change');
   return newMsg;
+};
+
+// Mark all patient messages in this chat as read by doctor
+export const markChatAsReadByDoctor = (patientId: string, doctorId: string): void => {
+  const key = getChatKey(patientId, doctorId);
+  const current = getStoredChatMessages(patientId, doctorId);
+  let changed = false;
+
+  const updated = current.map((m) => {
+    if (m.sender === 'patient' && !m.readByDoctor) {
+      changed = true;
+      return { ...m, readByDoctor: true };
+    }
+    return m;
+  });
+
+  if (changed) {
+    localStorage.setItem(key, JSON.stringify(updated));
+    notifyStateChange('aegis_chat_change');
+  }
+};
+
+// Mark all doctor messages in this chat as read by patient
+export const markChatAsReadByPatient = (patientId: string, doctorId: string): void => {
+  const key = getChatKey(patientId, doctorId);
+  const current = getStoredChatMessages(patientId, doctorId);
+  let changed = false;
+
+  const updated = current.map((m) => {
+    if (m.sender === 'doctor' && !m.readByPatient) {
+      changed = true;
+      return { ...m, readByPatient: true };
+    }
+    return m;
+  });
+
+  if (changed) {
+    localStorage.setItem(key, JSON.stringify(updated));
+    notifyStateChange('aegis_chat_change');
+  }
+};
+
+// Count unread patient messages from a specific patient for a doctor
+export const getUnreadMessagesCountFromPatient = (patientId: string, doctorId: string): number => {
+  const messages = getStoredChatMessages(patientId, doctorId);
+  return messages.filter((m) => m.sender === 'patient' && !m.readByDoctor).length;
+};
+
+// Count total unread messages from all patients for a doctor (to show red dot in Doctor Portal & Navbar)
+export const getTotalUnreadMessagesForDoctor = (doctorId: string): number => {
+  const patients = getStoredRegisteredPatients();
+  let count = 0;
+  for (const patient of patients) {
+    if (patient.assignedDoctorIds.includes(doctorId)) {
+      const msgs = getStoredChatMessages(patient.id, doctorId);
+      count += msgs.filter((m) => m.sender === 'patient' && !m.readByDoctor).length;
+    }
+  }
+  return count;
+};
+
+// Count unread messages from doctor for a patient
+export const getUnreadMessagesForPatient = (patientId: string, doctorId?: string): number => {
+  const patient = getRegisteredPatientById(patientId);
+  if (!patient) return 0;
+  const targetDocIds = doctorId ? [doctorId] : patient.assignedDoctorIds;
+  let count = 0;
+  for (const docId of targetDocIds) {
+    const msgs = getStoredChatMessages(patientId, docId);
+    count += msgs.filter((m) => m.sender === 'doctor' && !m.readByPatient).length;
+  }
+  return count;
 };
 
 // 5. CLINICAL DOCUMENTS & UPLOADS (SHARED BETWEEN PATIENT & DOCTOR)
@@ -509,4 +663,122 @@ export const getLastDischargeNotice = (patientId?: string): DischargeNotice | nu
 export const clearDischargeNotice = () => {
   localStorage.removeItem(DISCHARGE_NOTICE_KEY);
   notifyStateChange('aegis_consultation_discharged');
+};
+
+// 8. AUDIT LOGS STORAGE
+export const getStoredAuditLogs = (): AuditLogEntry[] => {
+  try {
+    const raw = localStorage.getItem(AUDIT_LOGS_KEY);
+    if (!raw) {
+      localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(INITIAL_AUDIT_LOGS));
+      return INITIAL_AUDIT_LOGS;
+    }
+    return JSON.parse(raw);
+  } catch (e) {
+    return INITIAL_AUDIT_LOGS;
+  }
+};
+
+export const saveAuditLog = (
+  log: Omit<AuditLogEntry, 'id' | 'timestamp'>
+): AuditLogEntry => {
+  const current = getStoredAuditLogs();
+  const newLog: AuditLogEntry = {
+    ...log,
+    id: 'log-' + Date.now() + '-' + Math.random().toString(36).substring(2, 5),
+    timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+  };
+
+  const updated = [newLog, ...current.slice(0, 49)];
+  localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(updated));
+  notifyStateChange('aegis_audit_change');
+  return newLog;
+};
+
+// 9. PUBLIC CLINICAL INQUIRIES & PRE-BOOKING DOUBTS HELP DESK
+export const getStoredClinicalInquiries = (): ClinicalInquiry[] => {
+  try {
+    const raw = localStorage.getItem(CLINICAL_INQUIRIES_KEY);
+    if (!raw) {
+      localStorage.setItem(CLINICAL_INQUIRIES_KEY, JSON.stringify(INITIAL_CLINICAL_INQUIRIES));
+      return INITIAL_CLINICAL_INQUIRIES;
+    }
+    return JSON.parse(raw);
+  } catch (e) {
+    return INITIAL_CLINICAL_INQUIRIES;
+  }
+};
+
+export const saveClinicalInquiry = (
+  inquiry: Omit<ClinicalInquiry, 'id' | 'createdAt' | 'status'>
+): ClinicalInquiry => {
+  const current = getStoredClinicalInquiries();
+  const newInquiry: ClinicalInquiry = {
+    ...inquiry,
+    id: 'inq-' + Date.now(),
+    status: 'pending',
+    createdAt: new Date().toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+  };
+
+  const updated = [newInquiry, ...current];
+  localStorage.setItem(CLINICAL_INQUIRIES_KEY, JSON.stringify(updated));
+  notifyStateChange('aegis_inquiries_change');
+
+  saveAuditLog({
+    action: 'Public Clinical Inquiry Submitted',
+    actor: newInquiry.name,
+    role: 'guest',
+    details: `Pre-booking doubt filed under category: ${newInquiry.category}. Subject: "${newInquiry.subject}"`,
+    ipAddress: '103.21.144.92 (India)',
+    trustScore: 92,
+    status: 'SUCCESS',
+  });
+
+  return newInquiry;
+};
+
+export const replyToClinicalInquiry = (
+  inquiryId: string,
+  replyMessage: string,
+  repliedBy: string = 'Creator / Telemedicine Admin'
+): ClinicalInquiry | null => {
+  const current = getStoredClinicalInquiries();
+  const index = current.findIndex((i) => i.id === inquiryId);
+  if (index === -1) return null;
+
+  const target = current[index];
+  const updatedInquiry: ClinicalInquiry = {
+    ...target,
+    status: 'replied',
+    replyMessage,
+    repliedAt: new Date().toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+    repliedBy,
+  };
+
+  const updated = [...current];
+  updated[index] = updatedInquiry;
+  localStorage.setItem(CLINICAL_INQUIRIES_KEY, JSON.stringify(updated));
+  notifyStateChange('aegis_inquiries_change');
+
+  saveAuditLog({
+    action: 'Clinical Inquiry Answered',
+    actor: repliedBy,
+    role: 'admin',
+    details: `Official response dispatched for inquiry #${inquiryId} from ${target.name}.`,
+    ipAddress: '127.0.0.1 (Enclave Admin)',
+    trustScore: 99,
+    status: 'RESOLVED',
+  });
+
+  return updatedInquiry;
 };

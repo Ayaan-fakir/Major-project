@@ -63,6 +63,8 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({
   const [patientName, setPatientName] = useState<string>('');
   const [patientEmail, setPatientEmail] = useState<string>('');
   const [patientPhone, setPatientPhone] = useState<string>('');
+  const [patientAge, setPatientAge] = useState<number>(32);
+  const [patientGender, setPatientGender] = useState<string>('Male');
   const [patientNotes, setPatientNotes] = useState<string>(
     'Consultation regarding health symptoms and doctor diagnostic review.'
   );
@@ -71,6 +73,8 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({
     setPatientName('Ayaan Khan');
     setPatientEmail('ayaan.khan@example.in');
     setPatientPhone('+91 98450 77123');
+    setPatientAge(29);
+    setPatientGender('Male');
     setPatientNotes('Cardiovascular flutter review and blood pressure checkup.');
   };
 
@@ -163,6 +167,8 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({
         phone: patientPhone.trim(),
         doctorId: selectedDoctor.id,
         doctorName: selectedDoctor.name,
+        age: patientAge,
+        gender: patientGender,
         condition: patientNotes.trim() || `Consultation regarding ${selectedDept}`,
       });
 
@@ -173,6 +179,8 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({
       const saved = saveAppointment({
         patientId: patient.id,
         patientName: patient.name,
+        patientAge: patientAge,
+        patientGender: patientGender,
         patientPhone: patient.phone,
         patientEmail: patient.email,
         doctorId: selectedDoctor.id,
@@ -467,17 +475,49 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({
                 </div>
               </div>
 
-              <div className="mb-5">
-                <label className="text-xs font-mono uppercase text-[#8C8C88] block mb-2">
-                  Mobile Number (SMS / WhatsApp Encrypted Token) *
-                </label>
-                <input
-                  type="tel"
-                  value={patientPhone}
-                  onChange={(e) => setPatientPhone(e.target.value)}
-                  placeholder="+91 98765 43210"
-                  className="w-full px-4 py-3 rounded-xl bg-black border border-white/10 text-white text-sm focus:outline-none focus:border-[#D7FA3B] transition-colors"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+                <div>
+                  <label className="text-xs font-mono uppercase text-[#8C8C88] block mb-2">
+                    Mobile Number (SMS &amp; WhatsApp Token) *
+                  </label>
+                  <input
+                    type="tel"
+                    value={patientPhone}
+                    onChange={(e) => setPatientPhone(e.target.value)}
+                    placeholder="+91 98765 43210"
+                    className="w-full px-4 py-3 rounded-xl bg-black border border-white/10 text-white text-sm focus:outline-none focus:border-[#D7FA3B] transition-colors"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-mono uppercase text-[#8C8C88] block mb-2">
+                      Age (Years) *
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={120}
+                      value={patientAge}
+                      onChange={(e) => setPatientAge(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-full px-4 py-3 rounded-xl bg-black border border-white/10 text-white text-sm focus:outline-none focus:border-[#D7FA3B] transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-mono uppercase text-[#8C8C88] block mb-2">
+                      Sex / Gender *
+                    </label>
+                    <select
+                      value={patientGender}
+                      onChange={(e) => setPatientGender(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-black border border-white/10 text-white text-sm focus:outline-none focus:border-[#D7FA3B] transition-colors"
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -604,7 +644,7 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({
 
                 <div className="text-white/80 leading-relaxed text-xs space-y-1">
                   <div>
-                    Patient Profile: <strong className="text-white">{patientName}</strong> · ID #{createdPatientId}
+                    Patient Profile: <strong className="text-white">{patientName}</strong> ({patientAge} yrs, {patientGender}) · ID #{createdPatientId}
                   </div>
                   <div>
                     Specialist: <strong className="text-white">{selectedDoctor.name}</strong> · {selectedDoctor.specialty}

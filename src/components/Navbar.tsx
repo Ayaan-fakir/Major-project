@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AppView, AuthUser } from '../types';
 import { Shield, ChevronDown, Phone, UserCheck, Stethoscope, User, Menu, X, ArrowRight, LogIn, LogOut } from 'lucide-react';
+import { getTotalUnreadMessagesForDoctor, getUnreadMessagesForPatient } from '../services/telemedicineStorage';
 
 interface NavbarProps {
   currentView: AppView;
   currentUser: AuthUser | null;
   onNavigate: (view: AppView) => void;
   onOpenBooking: () => void;
-  onOpenLogin: (role?: 'patient' | 'doctor') => void;
+  onOpenLogin: (role?: 'patient' | 'doctor' | 'admin') => void;
   onLogout: () => void;
 }
 
@@ -23,6 +24,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [utilityMenuOpen, setUtilityMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
 
   const utilityRef = useRef<HTMLDivElement | null>(null);
   const userRef = useRef<HTMLDivElement | null>(null);
@@ -34,6 +36,33 @@ export const Navbar: React.FC<NavbarProps> = ({
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Listen to unread message count
+  useEffect(() => {
+    const checkUnread = () => {
+      if (!currentUser) {
+        setUnreadCount(0);
+        return;
+      }
+      if (currentUser.role === 'doctor') {
+        setUnreadCount(getTotalUnreadMessagesForDoctor(currentUser.id));
+      } else if (currentUser.role === 'patient') {
+        setUnreadCount(getUnreadMessagesForPatient(currentUser.id));
+      } else {
+        setUnreadCount(0);
+      }
+    };
+
+    checkUnread();
+    window.addEventListener('aegis_chat_change', checkUnread);
+    window.addEventListener('aegis_auth_change', checkUnread);
+    window.addEventListener('storage', checkUnread);
+    return () => {
+      window.removeEventListener('aegis_chat_change', checkUnread);
+      window.removeEventListener('aegis_auth_change', checkUnread);
+      window.removeEventListener('storage', checkUnread);
+    };
+  }, [currentUser]);
 
   // Click outside to close menus
   useEffect(() => {
@@ -231,6 +260,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                           </button>
                         </li>
                         <li>
+                          <button
+                            onClick={() => {
+                              setUtilityMenuOpen(false);
+                              if (currentUser?.role === 'admin') onNavigate('admin');
+                              else onOpenLogin('admin');
+                            }}
+                            className="text-[#D7FA3B] hover:underline flex items-center gap-1 font-medium"
+                          >
+                            <span>Creator / Admin</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </button>
+                        </li>
+                        <li>
                           <button onClick={() => { scrollToSection('booking'); setUtilityMenuOpen(false); }} className="text-white/80 hover:text-[#D7FA3B]">
                             Book Consultation
                           </button>
@@ -269,32 +311,52 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="relative" ref={userRef}>
                 <button
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="px-3 py-1.5 sm:py-2 rounded-full bg-[#D7FA3B] text-black text-xs font-bold flex items-center gap-1.5 transition-transform active:scale-95 shadow-md"
+                  className="px-3 py-1.5 sm:py-2 rounded-full bg-[#D7FA3B] text-black text-xs font-bold flex items-center gap-1.5 transition-transform active:scale-95 shadow-md relative"
                 >
                   {currentUser.role === 'doctor' ? (
                     <Stethoscope className="w-3.5 h-3.5" />
+                  ) : currentUser.role === 'admin' ? (
+                    <Shield className="w-3.5 h-3.5" />
                   ) : (
                     <UserCheck className="w-3.5 h-3.5" />
                   )}
                   <span className="max-w-[80px] sm:max-w-[110px] truncate">{currentUser.name}</span>
+                  {unreadCount > 0 && (
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600"></span>
+                    </span>
+                  )}
                   <ChevronDown className="w-3 h-3" />
                 </button>
 
                 {userDropdownOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-60 rounded-2xl bg-[#0E0E10] border border-white/20 p-2 shadow-2xl backdrop-blur-xl z-50 text-left">
-                    <div className="px-3 py-2 border-b border-white/10 text-[10px] text-[#8C8C88] font-mono">
-                      LOGGED IN AS {currentUser.role.toUpperCase()}
+                  <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl bg-[#0E0E10] border border-white/20 p-2 shadow-2xl backdrop-blur-xl z-50 text-left animate-fade-in">
+                    <div className="px-3 py-2 border-b border-white/10 text-[10px] text-[#8C8C88] font-mono flex items-center justify-between">
+                      <span>LOGGED IN AS {currentUser.role.toUpperCase()}</span>
+                      {unreadCount > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-bold">
+                          {unreadCount} new msg
+                        </span>
+                      )}
                     </div>
                     <div className="py-1 space-y-1">
                       <button
                         onClick={() => {
-                          onNavigate(currentUser.role === 'doctor' ? 'doctor' : 'patient');
+                          onNavigate(currentUser.role === 'doctor' ? 'doctor' : currentUser.role === 'admin' ? 'admin' : 'patient');
                           setUserDropdownOpen(false);
                         }}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-white hover:bg-white/10 font-semibold"
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-white hover:bg-white/10 font-semibold"
                       >
-                        <Shield className="w-3.5 h-3.5 text-[#D7FA3B]" />
-                        <span>Go to {currentUser.role === 'doctor' ? 'Doctor Portal' : 'Patient Portal'}</span>
+                        <div className="flex items-center gap-2">
+                          <Shield className="w-3.5 h-3.5 text-[#D7FA3B]" />
+                          <span>
+                            Go to {currentUser.role === 'doctor' ? 'Doctor Portal' : currentUser.role === 'admin' ? 'Admin Console' : 'Patient Portal'}
+                          </span>
+                        </div>
+                        {unreadCount > 0 && (
+                          <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                        )}
                       </button>
 
                       <button
@@ -323,14 +385,23 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             )}
 
-            {/* Book Appointment CTA Pill */}
-            <button
-              onClick={onOpenBooking}
-              className="px-3 sm:px-5 py-2 rounded-full bg-[#D7FA3B] hover:bg-[#c9ec2e] text-black font-extrabold text-xs tracking-tight transition-transform active:scale-95 shadow-md flex items-center gap-1.5 whitespace-nowrap shrink-0"
-            >
-              <span>Book</span><span className="hidden sm:inline">&nbsp;Appointment</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            {/* Book Appointment CTA Pill - ONLY visible on public landing page! */}
+            {currentView === 'landing' ? (
+              <button
+                onClick={onOpenBooking}
+                className="px-3 sm:px-5 py-2 rounded-full bg-[#D7FA3B] hover:bg-[#c9ec2e] text-black font-extrabold text-xs tracking-tight transition-transform active:scale-95 shadow-md flex items-center gap-1.5 whitespace-nowrap shrink-0"
+              >
+                <span>Book</span><span className="hidden sm:inline">&nbsp;Appointment</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <button
+                onClick={() => onNavigate('landing')}
+                className="px-3 sm:px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0"
+              >
+                <span>← Public Site</span>
+              </button>
+            )}
 
             {/* Mobile menu toggle */}
             <button
@@ -372,26 +443,36 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <div className="mt-6 flex flex-col gap-3">
             {!currentUser ? (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
                     onOpenLogin('patient');
                   }}
-                  className="py-3 rounded-full bg-white/10 border border-white/20 text-white font-bold text-center flex items-center justify-center gap-1.5 text-xs hover:bg-white/20 transition-colors"
+                  className="py-3 rounded-2xl bg-white/10 border border-white/20 text-white font-bold text-center flex flex-col items-center justify-center gap-1 text-[11px] hover:bg-white/20 transition-colors"
                 >
-                  <LogIn className="w-3.5 h-3.5 text-[#D7FA3B]" />
-                  <span>Patient Login</span>
+                  <LogIn className="w-4 h-4 text-[#D7FA3B]" />
+                  <span>Patient</span>
                 </button>
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
                     onOpenLogin('doctor');
                   }}
-                  className="py-3 rounded-full bg-white/10 border border-white/20 text-white font-bold text-center flex items-center justify-center gap-1.5 text-xs hover:bg-white/20 transition-colors"
+                  className="py-3 rounded-2xl bg-white/10 border border-white/20 text-white font-bold text-center flex flex-col items-center justify-center gap-1 text-[11px] hover:bg-white/20 transition-colors"
                 >
-                  <Stethoscope className="w-3.5 h-3.5 text-[#D7FA3B]" />
-                  <span>Doctor Login</span>
+                  <Stethoscope className="w-4 h-4 text-[#D7FA3B]" />
+                  <span>Doctor</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onOpenLogin('admin');
+                  }}
+                  className="py-3 rounded-2xl bg-white/10 border border-white/20 text-white font-bold text-center flex flex-col items-center justify-center gap-1 text-[11px] hover:bg-white/20 transition-colors"
+                >
+                  <Shield className="w-4 h-4 text-[#D7FA3B]" />
+                  <span>Creator</span>
                 </button>
               </div>
             ) : (
@@ -399,11 +480,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    onNavigate(currentUser.role === 'doctor' ? 'doctor' : 'patient');
+                    onNavigate(currentUser.role === 'doctor' ? 'doctor' : currentUser.role === 'admin' ? 'admin' : 'patient');
                   }}
                   className="w-full py-3 rounded-full bg-[#D7FA3B] text-black font-extrabold text-center"
                 >
-                  Enter {currentUser.role === 'doctor' ? 'Doctor Portal' : 'Patient Portal'}
+                  Enter {currentUser.role === 'doctor' ? 'Doctor Portal' : currentUser.role === 'admin' ? 'Creator Console' : 'Patient Portal'}
                 </button>
                 <button
                   onClick={() => {
@@ -417,15 +498,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             )}
 
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenBooking();
-              }}
-              className="w-full py-3.5 rounded-full bg-[#D7FA3B] text-black font-extrabold text-center shadow-lg"
-            >
-              Book Consultation Appointment
-            </button>
+            {currentView === 'landing' && (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenBooking();
+                }}
+                className="w-full py-3.5 rounded-full bg-[#D7FA3B] text-black font-extrabold text-center shadow-lg"
+              >
+                Book Consultation Appointment
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -14,6 +14,8 @@ import {
   getLastDischargeNotice,
   clearDischargeNotice,
   DischargeNotice,
+  getUnreadMessagesForPatient,
+  markChatAsReadByPatient,
 } from '../services/telemedicineStorage';
 import {
   LayoutDashboard,
@@ -93,6 +95,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
   // Appointments
   const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
+  const [unreadDoctorMessages, setUnreadDoctorMessages] = useState<number>(0);
 
   // In-Portal Consultation with Another Doctor Modal State
   const [isConsultModalOpen, setIsConsultModalOpen] = useState(false);
@@ -123,12 +126,17 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
     const appts = getStoredAppointments(currentUser.id);
     setAppointments(appts);
     setDischargeNotice(getLastDischargeNotice(currentUser.id));
+    setUnreadDoctorMessages(getUnreadMessagesForPatient(currentUser.id));
   };
 
   // Load chat and documents on mount & when selected doctor changes
   useEffect(() => {
     reloadPatientState();
-  }, [currentUser.id, attendingDoctor.id]);
+    if (activeTab === 'messages') {
+      markChatAsReadByPatient(currentUser.id, attendingDoctor.id);
+      setUnreadDoctorMessages(getUnreadMessagesForPatient(currentUser.id));
+    }
+  }, [currentUser.id, attendingDoctor.id, activeTab]);
 
   // Listen to cross-window / tab changes (e.g. when doctor accepts/rejects, replies, uploads a prescription, or discharges care)
   useEffect(() => {
@@ -444,7 +452,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
               <button
                 onClick={() => setActiveTab('messages')}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl font-semibold text-xs tracking-tight transition-all ${
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl font-semibold text-xs tracking-tight transition-all relative ${
                   activeTab === 'messages'
                     ? 'bg-[#D7FA3B] text-black shadow-md'
                     : 'text-white/80 hover:bg-white/10'
@@ -454,11 +462,19 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                   <MessageSquare className="w-4 h-4" />
                   <span>E2E Messages</span>
                 </div>
-                {chatMessages.length > 0 && (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-[#D7FA3B]">
-                    {chatMessages.length}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {unreadDoctorMessages > 0 && (
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-mono font-bold animate-pulse shadow-sm">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                      <span>{unreadDoctorMessages} new</span>
+                    </span>
+                  )}
+                  {chatMessages.length > 0 && unreadDoctorMessages === 0 && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-[#D7FA3B]">
+                      {chatMessages.length}
+                    </span>
+                  )}
+                </div>
               </button>
 
               <button

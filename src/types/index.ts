@@ -1,11 +1,11 @@
-export type AppView = 'landing' | 'patient' | 'doctor';
+export type AppView = 'landing' | 'patient' | 'doctor' | 'admin';
 
-export type UserRole = 'guest' | 'patient' | 'doctor';
+export type UserRole = 'guest' | 'patient' | 'doctor' | 'admin';
 
 export interface AuthUser {
   id: string;
   name: string;
-  role: 'patient' | 'doctor';
+  role: 'patient' | 'doctor' | 'admin';
   emailOrPhone: string;
   email?: string;
   phone?: string;
@@ -113,6 +113,8 @@ export interface AppointmentRecord {
   id: string;
   patientId: string;
   patientName: string;
+  patientAge?: number;
+  patientGender?: string;
   patientPhone: string;
   patientEmail: string;
   doctorId: string;
@@ -126,6 +128,21 @@ export interface AppointmentRecord {
   rejectionReason?: string;
   notes?: string;
   createdAt: string;
+}
+
+export interface ClinicalInquiry {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  subject: string;
+  message: string;
+  category: 'General Clinical' | 'Specialist Routing' | 'Security & Enclave' | 'Diagnostic Inquiry';
+  status: 'pending' | 'replied' | 'resolved';
+  createdAt: string;
+  replyMessage?: string;
+  repliedAt?: string;
+  repliedBy?: string;
 }
 
 export interface EHRMedication {
@@ -174,6 +191,8 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
   encrypted: boolean;
+  readByDoctor?: boolean;
+  readByPatient?: boolean;
   attachmentName?: string;
   attachmentType?: string;
 }
